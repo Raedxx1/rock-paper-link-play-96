@@ -89,7 +89,7 @@ const GameResult = ({ player1, player2, winner, isPlayer2, onResetGame, onGoHome
               <h4 className="font-semibold text-gray-800">{player1.name}</h4>
               <div className="text-4xl">{getChoiceEmoji(player1.choice)}</div>
               <p className="text-sm text-gray-600">{getChoiceName(player1.choice)}</p>
-              {winner === 'player1' && winner !== 'tie' && (
+              {winner === 'player1' && (
                 <div className="text-green-600 font-semibold">✅ فائز!</div>
               )}
             </div>
@@ -100,7 +100,7 @@ const GameResult = ({ player1, player2, winner, isPlayer2, onResetGame, onGoHome
               <h4 className="font-semibold text-gray-800">{player2.name}</h4>
               <div className="text-4xl">{getChoiceEmoji(player2.choice)}</div>
               <p className="text-sm text-gray-600">{getChoiceName(player2.choice)}</p>
-              {winner === 'player2' && winner !== 'tie' && (
+              {winner === 'player2' && (
                 <div className="text-green-600 font-semibold">✅ فائز!</div>
               )}
             </div>
