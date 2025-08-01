@@ -100,7 +100,7 @@ const GameRoom = () => {
     };
   }, [roomCode, navigate, isHost]);
 
-  // انضmام اللاعب الثاني
+  // انضمام اللاعب الثاني
   const joinAsPlayer2 = async () => {
     if (!playerName.trim() || !roomCode) return;
 
@@ -356,6 +356,12 @@ const GameRoom = () => {
   const otherPlayerChoice = (isHost || !isPlayer2) ? roomData.player2_choice : roomData.player1_choice;
   const bothPlayersChosen = roomData.player1_choice && roomData.player2_choice;
 
+  // تحديد ما إذا كان اللاعب الحالي هو اللاعب الأول
+  const isCurrentPlayer1 = isHost || !isPlayer2;
+  
+  // اللاعب الأول يجب أن ينتظر حتى يختار اللاعب الثاني أولاً
+  const shouldPlayer1Wait = isCurrentPlayer1 && !roomData.player2_choice && roomData.game_status === 'playing';
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 p-4" dir="rtl">
       <div className="max-w-md mx-auto space-y-6">
@@ -415,7 +421,12 @@ const GameRoom = () => {
           <Card>
             <CardHeader className="text-center">
               <CardTitle>
-                {currentPlayerChoice ? '✅ تم اختيار حركتك!' : 'اختر حركتك'}
+                {currentPlayerChoice ? 
+                  '✅ تم اختيار حركتك!' : 
+                  shouldPlayer1Wait ? 
+                    `⏳ انتظر حتى يختار ${roomData.player2_name}` : 
+                    'اختر حركتك'
+                }
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -426,6 +437,12 @@ const GameRoom = () => {
                   {bothPlayersChosen && (
                     <p className="text-sm text-gray-500">جارٍ حساب النتيجة...</p>
                   )}
+                </div>
+              ) : shouldPlayer1Wait ? (
+                <div className="text-center space-y-4">
+                  <div className="text-6xl">⏳</div>
+                  <p className="text-lg">انتظر حتى يختار {roomData.player2_name} حركته أولاً</p>
+                  <p className="text-sm text-gray-500">ستتمكن من اللعب بعد أن يختار</p>
                 </div>
               ) : (
                 <GameChoice onChoice={makeChoice} />
