@@ -67,7 +67,7 @@ export const YouTubeStats = () => {
               </Badge>
             </div>
             <p className="text-sm text-white/90 mb-2">
-              🕌 مهد | 22 سنة | 🇸🇦 سعودي | قريب مكة
+              🕌 مهند | 22 سنة | 🇸🇦 سعودي | قريب مكة
             </p>
             <p className="text-xs text-white/70 mb-2">
               Epic: iXDreemB52 | Steam: iXDreemB52 | Code: XDB52
