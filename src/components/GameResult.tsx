@@ -18,9 +18,10 @@ interface GameResultProps {
   gameWinner?: 'player1' | 'player2' | 'tie' | null;
   onReset: () => void;
   onGoHome: () => void;
+  isCurrentPlayerHost?: boolean;
 }
 
-const GameResult = ({ player1, player2, winner, isGameComplete, gameWinner, onReset, onGoHome }: GameResultProps) => {
+const GameResult = ({ player1, player2, winner, isGameComplete, gameWinner, onReset, onGoHome, isCurrentPlayerHost = false }: GameResultProps) => {
   const getChoiceEmoji = (choice: Choice) => {
     switch (choice) {
       case 'rock': return '🪨';
@@ -113,17 +114,27 @@ const GameResult = ({ player1, player2, winner, isGameComplete, gameWinner, onRe
           </div>
         </div>
 
-        {/* Action Buttons */}
-        <div className="flex gap-3 justify-center">
-          <Button onClick={onReset} className="flex-1 max-w-40">
-            <RotateCcw className="ml-2 h-4 w-4" />
-            {isGameComplete ? 'لعبة جديدة' : 'جولة جديدة'}
-          </Button>
-          <Button onClick={onGoHome} variant="outline" className="flex-1 max-w-40">
-            <Home className="ml-2 h-4 w-4" />
-            {isGameComplete ? 'إنهاء الجلسة' : 'الرئيسية'}
-          </Button>
-        </div>
+        {/* Action Buttons - فقط للاعب الأول */}
+        {isCurrentPlayerHost && (
+          <div className="flex gap-3 justify-center">
+            <Button onClick={onReset} className="flex-1 max-w-40">
+              <RotateCcw className="ml-2 h-4 w-4" />
+              {isGameComplete ? 'لعبة جديدة' : 'جولة جديدة'}
+            </Button>
+            <Button onClick={onGoHome} variant="outline" className="flex-1 max-w-40">
+              <Home className="ml-2 h-4 w-4" />
+              {isGameComplete ? 'إنهاء الجلسة' : 'الرئيسية'}
+            </Button>
+          </div>
+        )}
+        
+        {/* رسالة للاعب الثاني */}
+        {!isCurrentPlayerHost && (
+          <div className="text-center space-y-2">
+            <p className="text-lg text-gray-600">⏳ في انتظار قرار {player1.name}</p>
+            <p className="text-sm text-gray-500">سيتحكم اللاعب الأول في بدء الجولة التالية</p>
+          </div>
+        )}
       </CardContent>
     </Card>
   );

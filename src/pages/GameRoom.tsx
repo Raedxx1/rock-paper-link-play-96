@@ -467,6 +467,7 @@ const GameRoom = () => {
             gameWinner={roomData.winner}
             onReset={roomData.game_status === 'game_complete' ? resetGame : resetRound}
             onGoHome={() => navigate('/')}
+            isCurrentPlayerHost={isCurrentPlayer1}
           />
         )}
       </div>
