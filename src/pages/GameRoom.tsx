@@ -1,27 +1,28 @@
-
 import { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Copy, ArrowLeft, RotateCcw } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
-import { Home, RotateCcw, Copy } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 import GameChoice from '@/components/GameChoice';
 import GameResult from '@/components/GameResult';
 
 type Choice = 'rock' | 'paper' | 'scissors' | null;
 
-interface Player {
-  name: string;
-  choice: Choice;
-}
-
-interface RoomData {
-  player1: Player;
-  player2: Player | null;
-  gameStarted: boolean;
-  winner: string | null;
+interface GameRoom {
+  id: string;
+  player1_name: string;
+  player2_name: string | null;
+  player1_choice: Choice;
+  player2_choice: Choice;
+  player1_score: number;
+  player2_score: number;
+  current_round: number;
+  game_status: 'waiting' | 'playing' | 'round_complete' | 'game_complete';
+  winner: 'player1' | 'player2' | 'tie' | null;
+  round_winner: 'player1' | 'player2' | 'tie' | null;
 }
 
 const GameRoom = () => {
@@ -30,318 +31,410 @@ const GameRoom = () => {
   const roomCode = searchParams.get('r');
   const isHost = searchParams.get('host') === 'true';
   
-  const [roomData, setRoomData] = useState<RoomData | null>(null);
+  const [roomData, setRoomData] = useState<GameRoom | null>(null);
   const [playerName, setPlayerName] = useState('');
   const [isPlayer2, setIsPlayer2] = useState(false);
-  const [showNameInput, setShowNameInput] = useState(false);
-  const [roomFull, setRoomFull] = useState(false);
+  const [loading, setLoading] = useState(true);
 
+  // جلب بيانات الغرفة
+  const fetchRoomData = async () => {
+    if (!roomCode) return;
+
+    const { data, error } = await supabase
+      .from('game_rooms')
+      .select('*')
+      .eq('id', roomCode)
+      .single();
+
+    if (error) {
+      if (error.code === 'PGRST116') {
+        toast({
+          title: "❌ الغرفة غير موجودة",
+          description: "تأكد من صحة الرابط",
+          variant: "destructive"
+        });
+        navigate('/');
+      }
+      return;
+    }
+
+    setRoomData(data as GameRoom);
+    setLoading(false);
+
+    // تحديد دور اللاعب
+    if (!isHost && !data.player2_name) {
+      setIsPlayer2(true);
+    }
+  };
+
+  // إعداد الاشتراك في التحديثات الفورية
   useEffect(() => {
     if (!roomCode) {
       navigate('/');
       return;
     }
 
-    const savedRoom = localStorage.getItem(`room_${roomCode}`);
-    if (!savedRoom) {
-      toast({
-        title: "❌ غرفة غير موجودة",
-        description: "هذه الغرفة غير موجودة أو انتهت صلاحيتها",
-        variant: "destructive"
-      });
-      navigate('/');
-      return;
-    }
+    fetchRoomData();
 
-    const room: RoomData = JSON.parse(savedRoom);
-    setRoomData(room);
+    // الاشتراك في التحديثات الفورية
+    const subscription = supabase
+      .channel('game_room_changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'game_rooms',
+          filter: `id=eq.${roomCode}`
+        },
+        (payload) => {
+          if (payload.eventType === 'UPDATE') {
+            setRoomData(payload.new as GameRoom);
+          }
+        }
+      )
+      .subscribe();
 
-    // تحديد دور اللاعب
-    if (isHost) {
-      // مضيف الغرفة - اللاعب الأول
-      setIsPlayer2(false);
-      setShowNameInput(false);
-    } else if (!room.player2) {
-      // لاعب ثاني جديد
-      setShowNameInput(true);
-      setIsPlayer2(true);
-    } else {
-      // الغرفة ممتلئة
-      setRoomFull(true);
-    }
-  }, [roomCode, navigate]);
-
-  const joinAsPlayer2 = () => {
-    if (!playerName.trim()) {
-      toast({
-        title: "❌ اسم مطلوب",
-        description: "يرجى إدخال اسمك للانضمام",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    const updatedRoom = {
-      ...roomData!,
-      player2: {
-        name: playerName.trim(),
-        choice: null
-      }
+    return () => {
+      supabase.removeChannel(subscription);
     };
+  }, [roomCode, navigate, isHost]);
 
-    setRoomData(updatedRoom);
-    localStorage.setItem(`room_${roomCode}`, JSON.stringify(updatedRoom));
-    setShowNameInput(false);
-    
-    toast({
-      title: "✅ انضممت للغرفة!",
-      description: "ابدأ باختيار حركتك",
-    });
+  // انضmام اللاعب الثاني
+  const joinAsPlayer2 = async () => {
+    if (!playerName.trim() || !roomCode) return;
+
+    const { error } = await supabase
+      .from('game_rooms')
+      .update({
+        player2_name: playerName.trim(),
+        game_status: 'playing'
+      })
+      .eq('id', roomCode);
+
+    if (error) {
+      toast({
+        title: "❌ خطأ في الانضمام",
+        description: "حاول مرة أخرى",
+        variant: "destructive"
+      });
+    }
   };
 
-  const makeChoice = (choice: Choice) => {
-    if (!roomData) return;
+  // اختيار الحركة
+  const makeChoice = async (choice: Choice) => {
+    if (!roomData || !roomCode) return;
 
-    const updatedRoom = { ...roomData };
+    const updateField = isHost || !isPlayer2 ? 'player1_choice' : 'player2_choice';
     
-    if (isPlayer2) {
-      updatedRoom.player2!.choice = choice;
-    } else {
-      updatedRoom.player1.choice = choice;
-    }
+    const { error } = await supabase
+      .from('game_rooms')
+      .update({ [updateField]: choice })
+      .eq('id', roomCode);
 
-    // تحديد الفائز إذا اختار كلا اللاعبين
-    if (updatedRoom.player1.choice && updatedRoom.player2?.choice) {
-      updatedRoom.winner = determineWinner(updatedRoom.player1.choice, updatedRoom.player2.choice);
-      updatedRoom.gameStarted = true;
+    if (error) {
+      toast({
+        title: "❌ خطأ في الاختيار",
+        description: "حاول مرة أخرى",
+        variant: "destructive"
+      });
     }
-
-    setRoomData(updatedRoom);
-    localStorage.setItem(`room_${roomCode}`, JSON.stringify(updatedRoom));
   };
 
-  const determineWinner = (choice1: Choice, choice2: Choice): string => {
-    if (choice1 === choice2) return 'tie';
+  // تحديد الفائز في الجولة
+  const determineRoundWinner = (p1Choice: Choice, p2Choice: Choice): 'player1' | 'player2' | 'tie' => {
+    if (!p1Choice || !p2Choice) return 'tie';
+    if (p1Choice === p2Choice) return 'tie';
     
     const winConditions = {
       rock: 'scissors',
       paper: 'rock',
       scissors: 'paper'
     };
-
-    return winConditions[choice1 as keyof typeof winConditions] === choice2 ? 'player1' : 'player2';
+    
+    return winConditions[p1Choice] === p2Choice ? 'player1' : 'player2';
   };
 
-  const resetGame = () => {
-    const resetRoom = {
-      ...roomData!,
-      player1: { ...roomData!.player1, choice: null },
-      player2: roomData!.player2 ? { ...roomData!.player2, choice: null } : null,
-      gameStarted: false,
-      winner: null
-    };
+  // معالجة نهاية الجولة
+  useEffect(() => {
+    if (!roomData || !roomCode) return;
+    
+    // إذا اختار كلا اللاعبين
+    if (roomData.player1_choice && roomData.player2_choice && roomData.game_status === 'playing') {
+      const roundWinner = determineRoundWinner(roomData.player1_choice, roomData.player2_choice);
+      
+      let newPlayer1Score = roomData.player1_score;
+      let newPlayer2Score = roomData.player2_score;
+      
+      if (roundWinner === 'player1') newPlayer1Score++;
+      else if (roundWinner === 'player2') newPlayer2Score++;
 
-    setRoomData(resetRoom);
-    localStorage.setItem(`room_${roomCode}`, JSON.stringify(resetRoom));
+      // تحديد فائز اللعبة (أول من يصل لـ 3 نقاط)
+      const gameWinner = newPlayer1Score >= 3 ? 'player1' : 
+                        newPlayer2Score >= 3 ? 'player2' : null;
+
+      const newGameStatus = gameWinner ? 'game_complete' : 'round_complete';
+
+      supabase
+        .from('game_rooms')
+        .update({
+          round_winner: roundWinner,
+          player1_score: newPlayer1Score,
+          player2_score: newPlayer2Score,
+          winner: gameWinner,
+          game_status: newGameStatus
+        })
+        .eq('id', roomCode);
+    }
+  }, [roomData?.player1_choice, roomData?.player2_choice, roomData?.game_status, roomCode]);
+
+  // إعادة تعيين الجولة
+  const resetRound = async () => {
+    if (!roomCode) return;
+
+    const { error } = await supabase
+      .from('game_rooms')
+      .update({
+        player1_choice: null,
+        player2_choice: null,
+        round_winner: null,
+        current_round: (roomData?.current_round || 1) + 1,
+        game_status: 'playing'
+      })
+      .eq('id', roomCode);
+
+    if (error) {
+      toast({
+        title: "❌ خطأ في إعادة الجولة",
+        description: "حاول مرة أخرى",
+        variant: "destructive"
+      });
+    }
   };
 
-  const goHome = () => {
-    navigate('/');
+  // إعادة تعيين اللعبة
+  const resetGame = async () => {
+    if (!roomCode) return;
+
+    const { error } = await supabase
+      .from('game_rooms')
+      .update({
+        player1_choice: null,
+        player2_choice: null,
+        player1_score: 0,
+        player2_score: 0,
+        current_round: 1,
+        round_winner: null,
+        winner: null,
+        game_status: 'playing'
+      })
+      .eq('id', roomCode);
+
+    if (error) {
+      toast({
+        title: "❌ خطأ في إعادة اللعبة",
+        description: "حاول مرة أخرى",
+        variant: "destructive"
+      });
+    }
   };
 
-  if (roomFull && !isPlayer2) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-red-50 to-orange-50 flex items-center justify-center p-4" dir="rtl">
-        <Card className="w-full max-w-md">
-          <CardHeader className="text-center">
-            <CardTitle className="text-red-600">❌ غرفة ممتلئة</CardTitle>
-          </CardHeader>
-          <CardContent className="text-center space-y-4">
-            <Alert>
-              <AlertDescription>
-                ❌ لا يمكن الانضمام. الغرفة ممتلئة بالفعل.
-              </AlertDescription>
-            </Alert>
-            <Button onClick={goHome} className="w-full">
-              <Home className="ml-2 h-4 w-4" />
-              العودة للرئيسية
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    );
+  // نسخ رابط الغرفة
+  const shareRoom = async () => {
+    const link = `${window.location.origin}/play?r=${roomCode}`;
+    try {
+      await navigator.clipboard.writeText(link);
+      toast({
+        title: "✅ تم نسخ الرابط!",
+        description: "شارك الرابط مع صديقك",
+      });
+    } catch (err) {
+      toast({
+        title: "❌ فشل في نسخ الرابط",
+        description: "حاول نسخه يدوياً",
+        variant: "destructive"
+      });
+    }
+  };
+
+  if (!roomCode) {
+    return <div>رمز الغرفة مطلوب</div>;
   }
 
-  if (showNameInput) {
+  if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 flex items-center justify-center p-4" dir="rtl">
-        <Card className="w-full max-w-md">
-          <CardHeader className="text-center">
-            <CardTitle>✍️ أدخل اسمك للانضمام</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <Input
-              placeholder="اسمك..."
-              value={playerName}
-              onChange={(e) => setPlayerName(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && joinAsPlayer2()}
-            />
-            <Button onClick={joinAsPlayer2} className="w-full">
-              انضمام للعبة
-            </Button>
-            <Button onClick={goHome} variant="outline" className="w-full">
-              <Home className="ml-2 h-4 w-4" />
-              العودة للرئيسية
-            </Button>
-          </CardContent>
-        </Card>
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 flex items-center justify-center" dir="rtl">
+        <div className="text-center">
+          <div className="text-4xl mb-4">⏳</div>
+          <p className="text-lg text-gray-600">جارٍ تحميل الغرفة...</p>
+        </div>
       </div>
     );
   }
 
   if (!roomData) {
-    return <div className="min-h-screen flex items-center justify-center">جاري التحميل...</div>;
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 flex items-center justify-center" dir="rtl">
+        <div className="text-center">
+          <div className="text-4xl mb-4">❌</div>
+          <p className="text-lg text-gray-600">الغرفة غير موجودة</p>
+          <Button onClick={() => navigate('/')} className="mt-4">
+            العودة للرئيسية
+          </Button>
+        </div>
+      </div>
+    );
   }
+
+  // إذا كانت الغرفة ممتلئة والمستخدم ليس من اللاعبين
+  if (roomData.player2_name && !isHost && !isPlayer2) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 flex items-center justify-center p-4" dir="rtl">
+        <Card className="w-full max-w-md">
+          <CardHeader className="text-center">
+            <CardTitle className="text-2xl">🚫 الغرفة ممتلئة</CardTitle>
+          </CardHeader>
+          <CardContent className="text-center space-y-4">
+            <p className="text-gray-600">هذه الغرفة تحتوي على لاعبين بالفعل</p>
+            <Button onClick={() => navigate('/')} className="w-full">
+              <ArrowLeft className="ml-2 h-4 w-4" />
+              العودة للرئيسية
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // إذا كان اللاعب الثاني يحتاج لإدخال اسمه
+  if (isPlayer2 && !roomData.player2_name) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 flex items-center justify-center p-4" dir="rtl">
+        <Card className="w-full max-w-md">
+          <CardHeader className="text-center">
+            <CardTitle className="text-2xl">🎮 انضمام للعبة</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium mb-2">اسمك:</label>
+              <Input
+                value={playerName}
+                onChange={(e) => setPlayerName(e.target.value)}
+                placeholder="أدخل اسمك هنا"
+                className="text-right"
+                onKeyPress={(e) => e.key === 'Enter' && joinAsPlayer2()}
+              />
+            </div>
+            <Button 
+              onClick={joinAsPlayer2} 
+              className="w-full"
+              disabled={!playerName.trim()}
+            >
+              انضم للعبة
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  const currentPlayerChoice = (isHost || !isPlayer2) ? roomData.player1_choice : roomData.player2_choice;
+  const otherPlayerChoice = (isHost || !isPlayer2) ? roomData.player2_choice : roomData.player1_choice;
+  const bothPlayersChosen = roomData.player1_choice && roomData.player2_choice;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 p-4" dir="rtl">
-      <div className="max-w-4xl mx-auto space-y-6">
-        {/* Header */}
-        <div className="text-center space-y-2">
-          <h1 className="text-3xl font-bold text-gray-900">🪨📄✂️ حجرة ورقة مقص</h1>
-          <p className="text-gray-600">الغرفة: {roomCode}</p>
+      <div className="max-w-md mx-auto space-y-6">
+        {/* شريط التنقل */}
+        <div className="flex justify-between items-center">
+          <Button 
+            onClick={() => navigate('/')} 
+            variant="outline" 
+            size="sm"
+          >
+            <ArrowLeft className="ml-2 h-4 w-4" />
+            الرئيسية
+          </Button>
+          
+          {(isHost || !isPlayer2) && (
+            <Button onClick={shareRoom} variant="outline" size="sm">
+              <Copy className="ml-2 h-4 w-4" />
+              مشاركة الرابط
+            </Button>
+          )}
         </div>
 
-        {/* Game Result */}
-        {roomData.gameStarted && roomData.winner && (
-          <GameResult 
-            player1={roomData.player1}
-            player2={roomData.player2!}
-            winner={roomData.winner}
-            isPlayer2={isPlayer2}
-            onResetGame={resetGame}
-            onGoHome={goHome}
-          />
-        )}
-
-        {/* Game Area */}
-        {!roomData.gameStarted && (
-          <div className="grid md:grid-cols-2 gap-6">
-            {/* Player 1 */}
-            <Card className={`${!isPlayer2 ? 'ring-2 ring-blue-500' : ''}`}>
-              <CardHeader className="text-center">
-                <CardTitle>🎮 اللاعب الأول</CardTitle>
-                <p className="text-lg font-semibold">{roomData.player1.name}</p>
-              </CardHeader>
-              <CardContent>
-                {!isPlayer2 && roomData.player2?.choice && !roomData.player1.choice ? (
-                  <GameChoice onChoice={makeChoice} />
-                ) : (
-                  <div className="text-center p-8">
-                    {roomData.player1.choice ? (
-                      <div className="text-4xl">
-                        {roomData.player1.choice === 'rock' && '🪨'}
-                        {roomData.player1.choice === 'paper' && '📄'}
-                        {roomData.player1.choice === 'scissors' && '✂️'}
-                      </div>
-                    ) : (
-                      <div className="text-gray-400">
-                        {isPlayer2 ? 'في انتظار اختيار اللاعب الأول...' : 'في انتظار اختيار اللاعب الثاني...'}
-                      </div>
-                    )}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Player 2 */}
-            <Card className={`${isPlayer2 ? 'ring-2 ring-green-500' : ''}`}>
-              <CardHeader className="text-center">
-                <CardTitle>🎮 اللاعب الثاني</CardTitle>
-                <p className="text-lg font-semibold">
-                  {roomData.player2?.name || 'في انتظار لاعب...'}
-                </p>
-              </CardHeader>
-              <CardContent>
-                {roomData.player2 ? (
-                  isPlayer2 && !roomData.player2.choice ? (
-                    <GameChoice onChoice={makeChoice} />
-                  ) : (
-                    <div className="text-center p-8">
-                      {roomData.player2.choice ? (
-                        <div className="text-4xl">
-                          {roomData.player2.choice === 'rock' && '🪨'}
-                          {roomData.player2.choice === 'paper' && '📄'}
-                          {roomData.player2.choice === 'scissors' && '✂️'}
-                        </div>
-                      ) : (
-                        <div className="text-gray-400">
-                          {isPlayer2 ? 'اختر حركتك أولاً!' : 'في انتظار اختيار اللاعب الثاني...'}
-                        </div>
-                      )}
-                    </div>
-                  )
-                ) : (
-                  <div className="text-center p-8 text-gray-400">
-                    في انتظار انضمام لاعب ثاني...
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-        )}
-
-        {/* Share Room Link for Host */}
-        {!isPlayer2 && !roomData.player2 && (
-          <Card className="max-w-2xl mx-auto">
-            <CardContent className="p-4">
-              <div className="text-center space-y-3">
-                <p className="text-sm font-medium text-blue-800">
-                  🔗 شارك هذا الرابط مع صديقك للانضمام:
-                </p>
-                <div className="bg-gray-100 p-3 rounded text-sm break-all text-gray-700">
-                  {`${window.location.origin}/play?r=${roomCode}`}
+        {/* النتيجة */}
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-center space-y-2">
+              <h2 className="text-xl font-bold">النتيجة</h2>
+              <div className="flex justify-center space-x-8 text-lg font-semibold">
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-blue-600">{roomData.player1_score}</div>
+                  <div className="text-sm text-gray-600">{roomData.player1_name}</div>
                 </div>
-                <Button 
-                  onClick={async () => {
-                    try {
-                      await navigator.clipboard.writeText(`${window.location.origin}/play?r=${roomCode}`);
-                      toast({
-                        title: "✅ تم نسخ الرابط!",
-                        description: "يمكنك الآن مشاركته مع صديقك",
-                      });
-                    } catch {
-                      toast({
-                        title: "❌ فشل في نسخ الرابط",
-                        description: "حاول نسخه يدوياً",
-                        variant: "destructive"
-                      });
-                    }
-                  }}
-                  variant="outline" 
-                  size="sm"
-                >
-                  <Copy className="ml-1 h-4 w-4" />
-                  نسخ الرابط
-                </Button>
+                <div className="text-3xl">VS</div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-red-600">{roomData.player2_score}</div>
+                  <div className="text-sm text-gray-600">{roomData.player2_name || 'في الانتظار...'}</div>
+                </div>
               </div>
+              <div className="text-sm text-gray-500">الجولة {roomData.current_round}</div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* انتظار اللاعب الثاني */}
+        {roomData.game_status === 'waiting' && (
+          <Card>
+            <CardContent className="pt-6 text-center">
+              <div className="text-4xl mb-4">⏳</div>
+              <p className="text-lg font-medium">في انتظار اللاعب الثاني...</p>
+              <p className="text-sm text-gray-600 mt-2">شارك الرابط مع صديقك</p>
             </CardContent>
           </Card>
         )}
 
-        {/* Controls */}
-        <div className="flex justify-center gap-4">
-          <Button onClick={goHome} variant="outline">
-            <Home className="ml-2 h-4 w-4" />
-            العودة للرئيسية
-          </Button>
-          {roomData.player2 && (
-            <Button onClick={resetGame} variant="outline">
-              <RotateCcw className="ml-2 h-4 w-4" />
-              إعادة تعيين
-            </Button>
-          )}
-        </div>
+        {/* اللعب */}
+        {roomData.game_status === 'playing' && !bothPlayersChosen && (
+          <Card>
+            <CardHeader className="text-center">
+              <CardTitle>
+                {currentPlayerChoice ? '✅ تم اختيار حركتك!' : 'اختر حركتك'}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {currentPlayerChoice ? (
+                <div className="text-center space-y-4">
+                  <div className="text-6xl">⏳</div>
+                  <p className="text-lg">في انتظار اختيار اللاعب الآخر...</p>
+                </div>
+              ) : (
+                <GameChoice onChoice={makeChoice} />
+              )}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* نتيجة الجولة */}
+        {(roomData.game_status === 'round_complete' || roomData.game_status === 'game_complete') && bothPlayersChosen && (
+          <GameResult
+            player1={{
+              name: roomData.player1_name,
+              choice: roomData.player1_choice
+            }}
+            player2={{
+              name: roomData.player2_name || 'Player 2',
+              choice: roomData.player2_choice
+            }}
+            winner={roomData.round_winner}
+            isGameComplete={roomData.game_status === 'game_complete'}
+            gameWinner={roomData.winner}
+            onReset={roomData.game_status === 'game_complete' ? resetGame : resetRound}
+            onGoHome={() => navigate('/')}
+          />
+        )}
       </div>
     </div>
   );

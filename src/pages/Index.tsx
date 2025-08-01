@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Copy, Plus } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 const Index = () => {
   const navigate = useNavigate();
@@ -19,23 +20,37 @@ const Index = () => {
     return result;
   };
 
-  const createNewGame = () => {
+  const createNewGame = async () => {
     const roomCode = generateRoomCode();
     
-    // حفظ بيانات الغرفة في localStorage (مؤقتاً)
-    const roomData = {
-      player1: {
-        name: "مضيف الغرفة",
-        choice: null
-      },
-      player2: null,
-      gameStarted: false,
-      winner: null
-    };
-    localStorage.setItem(`room_${roomCode}`, JSON.stringify(roomData));
-    
-    // الانتقال مباشرة للغرفة مع تمييز أنه مضيف الغرفة
-    navigate(`/play?r=${roomCode}&host=true`);
+    try {
+      // إنشاء غرفة جديدة في قاعدة البيانات
+      const { error } = await supabase
+        .from('game_rooms')
+        .insert({
+          id: roomCode,
+          player1_name: "مضيف الغرفة",
+          game_status: 'waiting'
+        });
+
+      if (error) {
+        toast({
+          title: "❌ خطأ في إنشاء الغرفة",
+          description: "حاول مرة أخرى",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      // الانتقال مباشرة للغرفة مع تمييز أنه مضيف الغرفة
+      navigate(`/play?r=${roomCode}&host=true`);
+    } catch (error) {
+      toast({
+        title: "❌ خطأ في الاتصال",
+        description: "تأكد من اتصالك بالإنترنت",
+        variant: "destructive"
+      });
+    }
   };
 
   const copyLink = async () => {

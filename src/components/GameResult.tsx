@@ -13,13 +13,14 @@ interface Player {
 interface GameResultProps {
   player1: Player;
   player2: Player;
-  winner: string;
-  isPlayer2: boolean;
-  onResetGame: () => void;
+  winner: 'player1' | 'player2' | 'tie' | null;
+  isGameComplete?: boolean;
+  gameWinner?: 'player1' | 'player2' | 'tie' | null;
+  onReset: () => void;
   onGoHome: () => void;
 }
 
-const GameResult = ({ player1, player2, winner, isPlayer2, onResetGame, onGoHome }: GameResultProps) => {
+const GameResult = ({ player1, player2, winner, isGameComplete, gameWinner, onReset, onGoHome }: GameResultProps) => {
   const getChoiceEmoji = (choice: Choice) => {
     switch (choice) {
       case 'rock': return '🪨';
@@ -39,29 +40,34 @@ const GameResult = ({ player1, player2, winner, isPlayer2, onResetGame, onGoHome
   };
 
   const getResultMessage = () => {
+    if (isGameComplete && gameWinner) {
+      if (gameWinner === 'tie') {
+        return {
+          title: '🤝 انتهت اللعبة بالتعادل!',
+          description: 'مباراة رائعة!',
+          color: 'text-yellow-600'
+        };
+      }
+      return {
+        title: `🏆 ${gameWinner === 'player1' ? player1.name : player2.name} فاز باللعبة!`,
+        description: 'الوصول لـ 3 نقاط أولاً',
+        color: 'text-green-600'
+      };
+    }
+    
     if (winner === 'tie') {
       return {
-        title: '🤝 تعادل!',
+        title: '🤝 تعادل في الجولة!',
         description: 'اختاركما نفس الحركة',
         color: 'text-yellow-600'
       };
     }
     
-    const playerWon = (winner === 'player1' && !isPlayer2) || (winner === 'player2' && isPlayer2);
-    
-    if (playerWon) {
-      return {
-        title: '🎉 تهانينا! فزت!',
-        description: 'أحسنت اللعب',
-        color: 'text-green-600'
-      };
-    } else {
-      return {
-        title: '💔 خسرت هذه المرة',
-        description: 'حظ أفضل في المرة القادمة',
-        color: 'text-red-600'
-      };
-    }
+    return {
+      title: `🎉 ${winner === 'player1' ? player1.name : player2.name} فاز بالجولة!`,
+      description: 'جولة رائعة!',
+      color: 'text-green-600'
+    };
   };
 
   const result = getResultMessage();
@@ -109,13 +115,13 @@ const GameResult = ({ player1, player2, winner, isPlayer2, onResetGame, onGoHome
 
         {/* Action Buttons */}
         <div className="flex gap-3 justify-center">
-          <Button onClick={onResetGame} className="flex-1 max-w-40">
+          <Button onClick={onReset} className="flex-1 max-w-40">
             <RotateCcw className="ml-2 h-4 w-4" />
-            إعادة المباراة
+            {isGameComplete ? 'لعبة جديدة' : 'جولة جديدة'}
           </Button>
           <Button onClick={onGoHome} variant="outline" className="flex-1 max-w-40">
             <Home className="ml-2 h-4 w-4" />
-            إنهاء الجلسة
+            {isGameComplete ? 'إنهاء الجلسة' : 'الرئيسية'}
           </Button>
         </div>
       </CardContent>
