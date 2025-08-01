@@ -3,7 +3,6 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Youtube, Users, Play, Heart } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import xdreamLogo from '@/assets/xdream-logo.jpg';
 
 interface YouTubeStatsData {
   success?: boolean;
@@ -14,7 +13,7 @@ interface YouTubeStatsData {
 }
 
 export const YouTubeStats = () => {
-  const [stats, setStats] = useState<YouTubeStatsData>({ subscriberCount: '999K+' });
+  const [stats, setStats] = useState<YouTubeStatsData>({ subscriberCount: '34.4K' });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -24,13 +23,13 @@ export const YouTubeStats = () => {
         
         if (error) {
           console.error('Error fetching YouTube stats:', error);
-          setStats({ subscriberCount: '999K+', error: 'Failed to fetch stats' });
+          setStats({ subscriberCount: '34.4K', error: 'Failed to fetch stats' });
         } else {
-          setStats(data || { subscriberCount: '999K+' });
+          setStats(data || { subscriberCount: '34.4K' });
         }
       } catch (error) {
         console.error('Error calling function:', error);
-        setStats({ subscriberCount: '999K+', error: 'Connection error' });
+        setStats({ subscriberCount: '34.4K', error: 'Connection error' });
       } finally {
         setLoading(false);
       }
@@ -46,9 +45,9 @@ export const YouTubeStats = () => {
           {/* صورة القناة */}
           <div className="relative">
             <img 
-              src={xdreamLogo} 
-              alt="اكس دريم لوجو" 
-              className="w-16 h-16 rounded-full border-2 border-purple-400/30 shadow-lg"
+              src="/lovable-uploads/7d6bcbf7-d370-49f3-9130-a8118efd3188.png" 
+              alt="XDreemB52 لوجو" 
+              className="w-16 h-16 rounded-full border-2 border-yellow-400/50 shadow-lg object-cover"
             />
             <div className="absolute -bottom-1 -right-1 bg-red-500 text-white text-xs px-1.5 py-0.5 rounded-full flex items-center gap-1">
               <Play className="h-2.5 w-2.5" fill="currentColor" />
@@ -60,15 +59,15 @@ export const YouTubeStats = () => {
           <div className="flex-1">
             <div className="flex items-center gap-2 mb-1">
               <h3 className="font-bold text-xl text-white drop-shadow-lg">
-                🎮 اكس دريم
+                XDreemB52 | دريم
               </h3>
-              <Badge variant="secondary" className="bg-blue-500/20 text-blue-300 border-blue-400/30 text-xs">
+              <Badge variant="secondary" className="bg-yellow-500/20 text-yellow-300 border-yellow-400/30 text-xs">
                 <Youtube className="h-3 w-3 mr-1" />
-                VERIFIED
+                ✓
               </Badge>
             </div>
             <p className="text-sm text-white/90 mb-2">
-              🎯 قناة الألعاب العربية الأولى | Gaming Content Creator
+              @XDreemB52 | الاسم مهدا | اصل على اينتي...
             </p>
             
             {/* الإحصائيات */}
@@ -82,15 +81,15 @@ export const YouTubeStats = () => {
               </div>
               
               <div className="flex items-center gap-1 bg-white/10 px-2 py-1 rounded-full">
-                <Heart className="h-3 w-3 text-pink-400" />
-                <span className="text-white font-semibold">10M+</span>
-                <span className="text-white/80">إعجاب</span>
+                <Play className="h-3 w-3 text-green-400" />
+                <span className="text-white font-semibold">534</span>
+                <span className="text-white/80">فيديو</span>
               </div>
               
               <div className="flex items-center gap-1 bg-white/10 px-2 py-1 rounded-full">
-                <Play className="h-3 w-3 text-green-400" />
-                <span className="text-white font-semibold">500+</span>
-                <span className="text-white/80">فيديو</span>
+                <Heart className="h-3 w-3 text-pink-400" />
+                <span className="text-white font-semibold">1K+</span>
+                <span className="text-white/80">إعجاب</span>
               </div>
             </div>
           </div>
