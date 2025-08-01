@@ -105,20 +105,52 @@ const GameRoom = () => {
   const joinAsPlayer2 = async () => {
     if (!playerName.trim() || !roomCode) return;
 
+    // التحقق من أن الغرفة ليست ممتلئة بالفعل
+    const { data: currentRoom, error: checkError } = await supabase
+      .from('game_rooms')
+      .select('player2_name')
+      .eq('id', roomCode)
+      .single();
+
+    if (checkError) {
+      toast({
+        title: "❌ خطأ في التحقق من الغرفة",
+        description: "حاول مرة أخرى",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // إذا كان هناك لاعب ثانٍ بالفعل
+    if (currentRoom.player2_name) {
+      toast({
+        title: "❌ الغرفة ممتلئة",
+        description: "لقد انضم لاعب آخر بالفعل",
+        variant: "destructive"
+      });
+      // إعادة تحميل بيانات الغرفة لتحديث الواجهة
+      fetchRoomData();
+      return;
+    }
+
+    // الانضمام للغرفة فقط إذا كانت فارغة
     const { error } = await supabase
       .from('game_rooms')
       .update({
         player2_name: playerName.trim(),
         game_status: 'playing'
       })
-      .eq('id', roomCode);
+      .eq('id', roomCode)
+      .eq('player2_name', null); // شرط إضافي للتأكد من أن player2_name ما زال فارغ
 
     if (error) {
       toast({
         title: "❌ خطأ في الانضمام",
-        description: "حاول مرة أخرى",
+        description: "ربما انضم لاعب آخر في نفس الوقت، حاول مرة أخرى",
         variant: "destructive"
       });
+      // إعادة تحميل بيانات الغرفة
+      fetchRoomData();
     }
   };
 
