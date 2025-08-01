@@ -67,7 +67,10 @@ export const YouTubeStats = () => {
               </Badge>
             </div>
             <p className="text-sm text-white/90 mb-2">
-              @XDreemB52 | الاسم مهدا | اصل على اينتي...
+              🕌 مهد | 22 سنة | 🇸🇦 سعودي | قريب مكة
+            </p>
+            <p className="text-xs text-white/70 mb-2">
+              Epic: iXDreemB52 | Steam: iXDreemB52 | Code: XDB52
             </p>
             
             {/* الإحصائيات */}
@@ -95,17 +98,27 @@ export const YouTubeStats = () => {
           </div>
         </div>
         
-        {/* رابط القناة */}
-        <div className="mt-4 pt-3 border-t border-white/20">
-          <a 
-            href="https://youtube.com/@xdreemb52"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="w-full bg-gradient-to-r from-red-600 to-red-500 hover:from-red-700 hover:to-red-600 text-white px-4 py-2 rounded-lg font-semibold transition-all duration-300 inline-flex items-center justify-center gap-2 shadow-lg hover:shadow-xl"
-          >
-            <Youtube className="h-4 w-4" />
-            🔔 اشترك في القناة
-          </a>
+        {/* الروابط */}
+        <div className="mt-4 pt-3 border-t border-white/20 space-y-2">
+          <div className="flex gap-2">
+            <a 
+              href="https://youtube.com/@xdreemb52"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex-1 bg-gradient-to-r from-red-600 to-red-500 hover:from-red-700 hover:to-red-600 text-white px-3 py-2 rounded-lg font-semibold transition-all duration-300 inline-flex items-center justify-center gap-2 shadow-lg hover:shadow-xl text-sm"
+            >
+              <Youtube className="h-3 w-3" />
+              اشترك
+            </a>
+            <a 
+              href="https://lnk.bio/XDreemB52"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex-1 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 text-white px-3 py-2 rounded-lg font-semibold transition-all duration-300 inline-flex items-center justify-center gap-2 shadow-lg hover:shadow-xl text-sm"
+            >
+              🔗 جميع الروابط
+            </a>
+          </div>
         </div>
       </CardContent>
     </Card>
