@@ -397,7 +397,7 @@ const GameRoom = () => {
         )}
 
         {/* اللعب */}
-        {roomData.game_status === 'playing' && !bothPlayersChosen && (
+        {roomData.game_status === 'playing' && (
           <Card>
             <CardHeader className="text-center">
               <CardTitle>
@@ -409,6 +409,9 @@ const GameRoom = () => {
                 <div className="text-center space-y-4">
                   <div className="text-6xl">⏳</div>
                   <p className="text-lg">في انتظار اختيار اللاعب الآخر...</p>
+                  {bothPlayersChosen && (
+                    <p className="text-sm text-gray-500">جارٍ حساب النتيجة...</p>
+                  )}
                 </div>
               ) : (
                 <GameChoice onChoice={makeChoice} />
