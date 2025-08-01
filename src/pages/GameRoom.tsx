@@ -175,16 +175,30 @@ const GameRoom = () => {
 
       const newGameStatus = gameWinner ? 'game_complete' : 'round_complete';
 
-      supabase
-        .from('game_rooms')
-        .update({
-          round_winner: roundWinner,
-          player1_score: newPlayer1Score,
-          player2_score: newPlayer2Score,
-          winner: gameWinner,
-          game_status: newGameStatus
-        })
-        .eq('id', roomCode);
+      // إجراء التحديث مع معالجة الأخطاء
+      const updateRound = async () => {
+        const { error } = await supabase
+          .from('game_rooms')
+          .update({
+            round_winner: roundWinner,
+            player1_score: newPlayer1Score,
+            player2_score: newPlayer2Score,
+            winner: gameWinner,
+            game_status: newGameStatus
+          })
+          .eq('id', roomCode);
+
+        if (error) {
+          console.error('Error updating round:', error);
+          toast({
+            title: "❌ خطأ في حفظ النتيجة",
+            description: "حاول إعادة تحميل الصفحة",
+            variant: "destructive"
+          });
+        }
+      };
+
+      updateRound();
     }
   }, [roomData?.player1_choice, roomData?.player2_choice, roomData?.game_status, roomCode]);
 
