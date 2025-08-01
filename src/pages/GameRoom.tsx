@@ -8,6 +8,7 @@ import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import GameChoice from '@/components/GameChoice';
 import GameResult from '@/components/GameResult';
+import { ThemeToggle } from '@/components/ThemeToggle';
 
 type Choice = 'rock' | 'paper' | 'scissors' | null;
 
@@ -363,25 +364,29 @@ const GameRoom = () => {
   const shouldPlayer1Wait = isCurrentPlayer1 && !roomData.player2_choice && roomData.game_status === 'playing';
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 p-4" dir="rtl">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 dark:from-gray-900 dark:to-gray-800 p-4" dir="rtl">
       <div className="max-w-md mx-auto space-y-6">
         {/* شريط التنقل */}
         <div className="flex justify-between items-center">
-          <Button 
-            onClick={() => navigate('/')} 
-            variant="outline" 
-            size="sm"
-          >
-            <ArrowLeft className="ml-2 h-4 w-4" />
-            الرئيسية
-          </Button>
-          
-          {(isHost || !isPlayer2) && (
-            <Button onClick={shareRoom} variant="outline" size="sm">
-              <Copy className="ml-2 h-4 w-4" />
-              مشاركة الرابط
+          <div className="flex gap-2">
+            <Button 
+              onClick={() => navigate('/')} 
+              variant="outline" 
+              size="sm"
+            >
+              <ArrowLeft className="ml-2 h-4 w-4" />
+              الرئيسية
             </Button>
-          )}
+            
+            {(isHost || !isPlayer2) && (
+              <Button onClick={shareRoom} variant="outline" size="sm">
+                <Copy className="ml-2 h-4 w-4" />
+                مشاركة الرابط
+              </Button>
+            )}
+          </div>
+          
+          <ThemeToggle />
         </div>
 
         {/* النتيجة */}

@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Copy, Plus } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { ThemeToggle } from '@/components/ThemeToggle';
 
 const Index = () => {
   const navigate = useNavigate();
@@ -76,12 +77,21 @@ const Index = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 flex items-center justify-center p-4" dir="rtl">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center p-4" dir="rtl">
       <div className="w-full max-w-md space-y-6">
+        {/* شريط التنقل العلوي */}
+        <div className="flex justify-between items-center">
+          <div className="text-sm text-gray-600 dark:text-gray-400">
+            <p>💻 مبرمج من قبل: <span className="font-semibold text-blue-600 dark:text-blue-400">شاورما جيمر</span></p>
+            <p>🎮 مخصص لـ: <span className="font-semibold text-purple-600 dark:text-purple-400">اكس دريم</span></p>
+          </div>
+          <ThemeToggle />
+        </div>
+
         <div className="text-center space-y-2">
-          <h1 className="text-4xl font-bold text-gray-900">🪨📄✂️</h1>
-          <h2 className="text-2xl font-bold text-gray-800">حجرة ورقة مقص</h2>
-          <p className="text-gray-600">العب مع أصدقائك أونلاين!</p>
+          <h1 className="text-4xl font-bold text-gray-900 dark:text-white">🪨📄✂️</h1>
+          <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-200">حجرة ورقة مقص</h2>
+          <p className="text-gray-600 dark:text-gray-400">العب مع أصدقائك أونلاين!</p>
         </div>
 
         <Card className="w-full">
@@ -103,9 +113,15 @@ const Index = () => {
           </CardContent>
         </Card>
 
-        <div className="text-center text-sm text-gray-500 space-y-1">
+        <div className="text-center text-sm text-gray-500 dark:text-gray-400 space-y-1">
           <p>💡 نصيحة: شارك الرابط مع صديقك لبدء اللعب</p>
           <p>🎮 يمكن لشخصين فقط اللعب في كل غرفة</p>
+        </div>
+
+        {/* معلومات المطور */}
+        <div className="text-center text-xs text-gray-400 dark:text-gray-500 border-t pt-4">
+          <p>© 2024 شاورما جيمر - جميع الحقوق محفوظة</p>
+          <p>مطورة خصيصاً لمجتمع اكس دريم</p>
         </div>
       </div>
     </div>
