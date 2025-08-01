@@ -16,6 +16,7 @@ interface GameRoom {
   id: string;
   player1_name: string;
   player2_name: string | null;
+  player2_session_id: string | null;
   player1_choice: Choice;
   player2_choice: Choice;
   player1_score: number;
@@ -36,6 +37,9 @@ const GameRoom = () => {
   const [playerName, setPlayerName] = useState('');
   const [isPlayer2, setIsPlayer2] = useState(false);
   const [loading, setLoading] = useState(true);
+  
+  // إنشاء session ID فريد لهذا المستخدم
+  const [sessionId] = useState(() => `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`);
 
   // جلب بيانات الغرفة
   const fetchRoomData = async () => {
@@ -63,8 +67,17 @@ const GameRoom = () => {
     setLoading(false);
 
     // تحديد دور اللاعب
-    if (!isHost && !data.player2_name) {
-      setIsPlayer2(true);
+    if (!isHost) {
+      if (!data.player2_name) {
+        // إذا لم يكن هناك لاعب ثاني، يمكن لهذا الشخص أن يكون اللاعب الثاني
+        setIsPlayer2(true);
+      } else if (data.player2_session_id === sessionId) {
+        // إذا كان session ID يطابق، فهذا هو اللاعب الثاني الفعلي
+        setIsPlayer2(true);
+      } else {
+        // إذا كان هناك لاعب ثاني ولكن session ID لا يطابق، فهذا ليس اللاعب الثاني
+        setIsPlayer2(false);
+      }
     }
   };
 
@@ -90,7 +103,19 @@ const GameRoom = () => {
         },
         (payload) => {
           if (payload.eventType === 'UPDATE') {
-            setRoomData(payload.new as GameRoom);
+            const newData = payload.new as GameRoom;
+            setRoomData(newData);
+            
+            // تحديث حالة isPlayer2 بناءً على البيانات الجديدة
+            if (!isHost) {
+              if (!newData.player2_name) {
+                setIsPlayer2(true);
+              } else if (newData.player2_session_id === sessionId) {
+                setIsPlayer2(true);
+              } else {
+                setIsPlayer2(false);
+              }
+            }
           }
         }
       )
@@ -105,59 +130,51 @@ const GameRoom = () => {
   const joinAsPlayer2 = async () => {
     if (!playerName.trim() || !roomCode) return;
 
-    // التحقق من أن الغرفة ليست ممتلئة بالفعل
-    const { data: currentRoom, error: checkError } = await supabase
+    // الانضمام للغرفة مع session ID
+    const { data: updateResult, error } = await supabase
       .from('game_rooms')
-      .select('player2_name')
+      .update({
+        player2_name: playerName.trim(),
+        player2_session_id: sessionId,
+        game_status: 'playing'
+      })
       .eq('id', roomCode)
-      .single();
+      .is('player2_name', null) // التأكد من أن الغرفة فارغة
+      .select();
 
-    if (checkError) {
-      toast({
-        title: "❌ خطأ في التحقق من الغرفة",
-        description: "حاول مرة أخرى",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    // إذا كان هناك لاعب ثانٍ بالفعل
-    if (currentRoom.player2_name) {
+    if (error || !updateResult || updateResult.length === 0) {
       toast({
         title: "❌ الغرفة ممتلئة",
         description: "لقد انضم لاعب آخر بالفعل",
         variant: "destructive"
       });
-      // إعادة تحميل بيانات الغرفة لتحديث الواجهة
+      // إعادة تحميل بيانات الغرفة
       fetchRoomData();
       return;
     }
 
-    // الانضمام للغرفة فقط إذا كانت فارغة
-    const { data: updateResult, error } = await supabase
-      .from('game_rooms')
-      .update({
-        player2_name: playerName.trim(),
-        game_status: 'playing'
-      })
-      .eq('id', roomCode)
-      .is('player2_name', null) // استخدام is بدلاً من eq للتحقق من null
-      .select(); // إضافة select للحصول على النتيجة
-
-    if (error || !updateResult || updateResult.length === 0) {
-      toast({
-        title: "❌ خطأ في الانضمام",
-        description: "ربما انضم لاعب آخر في نفس الوقت، حاول مرة أخرى",
-        variant: "destructive"
-      });
-      // إعادة تحميل بيانات الغرفة
-      fetchRoomData();
-    }
+    // تأكيد نجح الانضمام
+    toast({
+      title: "✅ تم الانضمام بنجاح!",
+      description: "مرحباً بك في اللعبة"
+    });
   };
 
   // اختيار الحركة
   const makeChoice = async (choice: Choice) => {
     if (!roomData || !roomCode) return;
+
+    // التحقق من أن الشخص له صلاحية اللعب
+    if (!isHost && isPlayer2 && roomData.player2_session_id !== sessionId) {
+      toast({
+        title: "❌ غير مسموح",
+        description: "هذا الحساب مخصص للاعب آخر",
+        variant: "destructive"
+      });
+      // إعادة تحميل بيانات الغرفة لتحديث الحالة
+      fetchRoomData();
+      return;
+    }
 
     const updateField = isHost || !isPlayer2 ? 'player1_choice' : 'player2_choice';
     
