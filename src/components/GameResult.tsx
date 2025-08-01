@@ -45,14 +45,20 @@ const GameResult = ({ player1, player2, winner, isGameComplete, gameWinner, onRe
       if (gameWinner === 'tie') {
         return {
           title: '🤝 انتهت اللعبة بالتعادل!',
-          description: 'مباراة رائعة!',
-          color: 'text-yellow-600'
+          description: 'مباراة رائعة! كلاكما بطل!',
+          color: 'text-warning',
+          winnerMessage: 'تعادل مشرف',
+          loserMessage: 'تعادل مشرف'
         };
       }
+      const winnerName = gameWinner === 'player1' ? player1.name : player2.name;
+      const loserName = gameWinner === 'player1' ? player2.name : player1.name;
       return {
-        title: `🏆 ${gameWinner === 'player1' ? player1.name : player2.name} فاز باللعبة!`,
+        title: `🏆 ${winnerName} فاز باللعبة!`,
         description: 'الوصول لـ 3 نقاط أولاً',
-        color: 'text-green-600'
+        color: 'text-success',
+        winnerMessage: '🎊 أهلاً بالبطل!',
+        loserMessage: '💪 المحاولة القادمة ستكون أفضل!'
       };
     }
     
@@ -60,14 +66,19 @@ const GameResult = ({ player1, player2, winner, isGameComplete, gameWinner, onRe
       return {
         title: '🤝 تعادل في الجولة!',
         description: 'اختاركما نفس الحركة',
-        color: 'text-yellow-600'
+        color: 'text-warning',
+        winnerMessage: 'تعادل',
+        loserMessage: 'تعادل'
       };
     }
     
+    const winnerName = winner === 'player1' ? player1.name : player2.name;
     return {
-      title: `🎉 ${winner === 'player1' ? player1.name : player2.name} فاز بالجولة!`,
+      title: `🎉 ${winnerName} فاز بالجولة!`,
       description: 'جولة رائعة!',
-      color: 'text-green-600'
+      color: 'text-success',
+      winnerMessage: '🌟 ممتاز!',
+      loserMessage: '⚡ لا تستسلم!'
     };
   };
 
@@ -86,30 +97,54 @@ const GameResult = ({ player1, player2, winner, isGameComplete, gameWinner, onRe
           <h3 className={`text-xl font-bold ${result.color}`}>
             {result.title}
           </h3>
-          <p className="text-gray-600">{result.description}</p>
+          <p className="text-muted-foreground">{result.description}</p>
         </div>
 
         {/* Players Choices */}
         <div className="grid md:grid-cols-2 gap-4">
-          <div className={`p-4 rounded-lg border-2 ${winner === 'player1' ? 'border-green-300 bg-green-50' : winner === 'tie' ? 'border-yellow-300 bg-yellow-50' : 'border-gray-200 bg-gray-50'}`}>
+          <div className={`p-4 rounded-lg border-2 transition-all duration-300 ${
+            winner === 'player1' 
+              ? 'border-success bg-success/10' 
+              : winner === 'tie' 
+                ? 'border-warning bg-warning/10' 
+                : 'border-destructive/30 bg-destructive/5'
+          }`}>
             <div className="text-center space-y-2">
-              <h4 className="font-semibold text-gray-800">{player1.name}</h4>
+              <h4 className="font-semibold text-card-foreground">{player1.name}</h4>
               <div className="text-4xl">{getChoiceEmoji(player1.choice)}</div>
-              <p className="text-sm text-gray-600">{getChoiceName(player1.choice)}</p>
-              {winner === 'player1' && (
-                <div className="text-green-600 font-semibold">✅ فائز!</div>
-              )}
+              <p className="text-sm text-muted-foreground">{getChoiceName(player1.choice)}</p>
+              <div className={`font-bold text-sm ${
+                winner === 'player1' 
+                  ? 'text-success' 
+                  : winner === 'tie' 
+                    ? 'text-warning' 
+                    : 'text-destructive'
+              }`}>
+                {winner === 'player1' ? result.winnerMessage : winner === 'tie' ? result.winnerMessage : result.loserMessage}
+              </div>
             </div>
           </div>
 
-          <div className={`p-4 rounded-lg border-2 ${winner === 'player2' ? 'border-green-300 bg-green-50' : winner === 'tie' ? 'border-yellow-300 bg-yellow-50' : 'border-gray-200 bg-gray-50'}`}>
+          <div className={`p-4 rounded-lg border-2 transition-all duration-300 ${
+            winner === 'player2' 
+              ? 'border-success bg-success/10' 
+              : winner === 'tie' 
+                ? 'border-warning bg-warning/10' 
+                : 'border-destructive/30 bg-destructive/5'
+          }`}>
             <div className="text-center space-y-2">
-              <h4 className="font-semibold text-gray-800">{player2.name}</h4>
+              <h4 className="font-semibold text-card-foreground">{player2.name}</h4>
               <div className="text-4xl">{getChoiceEmoji(player2.choice)}</div>
-              <p className="text-sm text-gray-600">{getChoiceName(player2.choice)}</p>
-              {winner === 'player2' && (
-                <div className="text-green-600 font-semibold">✅ فائز!</div>
-              )}
+              <p className="text-sm text-muted-foreground">{getChoiceName(player2.choice)}</p>
+              <div className={`font-bold text-sm ${
+                winner === 'player2' 
+                  ? 'text-success' 
+                  : winner === 'tie' 
+                    ? 'text-warning' 
+                    : 'text-destructive'
+              }`}>
+                {winner === 'player2' ? result.winnerMessage : winner === 'tie' ? result.winnerMessage : result.loserMessage}
+              </div>
             </div>
           </div>
         </div>
@@ -131,8 +166,8 @@ const GameResult = ({ player1, player2, winner, isGameComplete, gameWinner, onRe
         {/* رسالة للاعب الثاني */}
         {!isCurrentPlayerHost && (
           <div className="text-center space-y-2">
-            <p className="text-lg text-gray-600">⏳ في انتظار قرار {player1.name}</p>
-            <p className="text-sm text-gray-500">سيتحكم اللاعب الأول في بدء الجولة التالية</p>
+            <p className="text-lg text-muted-foreground">⏳ في انتظار قرار {player1.name}</p>
+            <p className="text-sm text-muted-foreground/70">سيتحكم اللاعب الأول في بدء الجولة التالية</p>
           </div>
         )}
       </CardContent>
