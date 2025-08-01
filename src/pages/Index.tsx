@@ -89,16 +89,16 @@ const Index = () => {
         backgroundRepeat: 'no-repeat'
       }}
     >
-      {/* Overlay للون */}
-      <div className="absolute inset-0 bg-black/40 dark:bg-black/60"></div>
+      {/* Overlay للون مع تحسين للثيم الفاتح */}
+      <div className="absolute inset-0 bg-black/50 dark:bg-black/60"></div>
       
       {/* المحتوى */}
       <div className="relative z-10 w-full max-w-md space-y-6">
         {/* شريط التنقل العلوي */}
         <div className="flex justify-between items-center">
-          <div className="text-sm text-white/90">
-            <p>💻 مبرمج من قبل: <span className="font-semibold text-blue-300">شاورما جيمر</span></p>
-            <p>🎮 مخصص لـ: <span className="font-semibold text-purple-300">اكس دريم</span></p>
+          <div className="text-sm text-white drop-shadow-lg">
+            <p>💻 مبرمج من قبل: <span className="font-semibold text-cyan-200">شاورما جيمر</span></p>
+            <p>🎮 مخصص لـ: <span className="font-semibold text-pink-200">اكس دريم</span></p>
           </div>
           <ThemeToggle />
         </div>
@@ -107,22 +107,22 @@ const Index = () => {
         <YouTubeStats />
 
         <div className="text-center space-y-2">
-          <h1 className="text-4xl font-bold text-white drop-shadow-lg">🪨📄✂️</h1>
-          <h2 className="text-2xl font-bold text-white drop-shadow-lg">حجرة ورقة مقص</h2>
-          <p className="text-white/90 drop-shadow">العب مع أصدقائك أونلاين!</p>
+          <h1 className="text-4xl font-bold text-white drop-shadow-xl">🪨📄✂️</h1>
+          <h2 className="text-2xl font-bold text-white drop-shadow-xl">حجرة ورقة مقص</h2>
+          <p className="text-white drop-shadow-lg font-medium">العب مع أصدقائك أونلاين!</p>
         </div>
 
-        <Card className="w-full bg-white/95 dark:bg-black/80 backdrop-blur-sm border-white/20">
+        <Card className="w-full bg-white/98 dark:bg-black/85 backdrop-blur-md border-white/30 shadow-2xl">
           <CardHeader className="text-center">
-            <CardTitle className="text-gray-900 dark:text-white">إنشاء لعبة جديدة</CardTitle>
-            <CardDescription className="text-gray-600 dark:text-gray-300">
+            <CardTitle className="text-card-foreground">إنشاء لعبة جديدة</CardTitle>
+            <CardDescription className="text-muted-foreground">
               أنشئ غرفة جديدة وشارك الرابط مع صديقك
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <Button 
               onClick={createNewGame} 
-              className="w-full text-lg py-6 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-0 shadow-lg hover:shadow-xl transition-all duration-300"
+              className="w-full text-lg py-6 bg-gradient-to-r from-primary to-secondary hover:from-primary/90 hover:to-secondary/90 text-primary-foreground border-0 shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:scale-[1.02]"
               size="lg"
             >
               <Plus className="ml-2 h-5 w-5" />
@@ -131,13 +131,13 @@ const Index = () => {
           </CardContent>
         </Card>
 
-        <div className="text-center text-sm text-white/80 space-y-1 drop-shadow">
+        <div className="text-center text-sm text-white space-y-1 drop-shadow-lg font-medium">
           <p>💡 نصيحة: شارك الرابط مع صديقك لبدء اللعب</p>
           <p>🎮 يمكن لشخصين فقط اللعب في كل غرفة</p>
         </div>
 
         {/* معلومات المطور */}
-        <div className="text-center text-xs text-white/70 border-t border-white/20 pt-4 drop-shadow">
+        <div className="text-center text-xs text-white border-t border-white/30 pt-4 drop-shadow-lg font-medium">
           <p>© 2024 شاورما جيمر - جميع الحقوق محفوظة</p>
           <p>مطورة خصيصاً لمجتمع اكس دريم</p>
         </div>
