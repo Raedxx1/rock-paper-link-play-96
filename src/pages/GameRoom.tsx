@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { toast } from '@/hooks/use-toast';
-import { Home, RotateCcw } from 'lucide-react';
+import { Home, RotateCcw, Copy } from 'lucide-react';
 import GameChoice from '@/components/GameChoice';
 import GameResult from '@/components/GameResult';
 
@@ -28,6 +28,7 @@ const GameRoom = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const roomCode = searchParams.get('r');
+  const isHost = searchParams.get('host') === 'true';
   
   const [roomData, setRoomData] = useState<RoomData | null>(null);
   const [playerName, setPlayerName] = useState('');
@@ -56,10 +57,16 @@ const GameRoom = () => {
     setRoomData(room);
 
     // تحديد دور اللاعب
-    if (!room.player2) {
+    if (isHost) {
+      // مضيف الغرفة - اللاعب الأول
+      setIsPlayer2(false);
+      setShowNameInput(false);
+    } else if (!room.player2) {
+      // لاعب ثاني جديد
       setShowNameInput(true);
       setIsPlayer2(true);
     } else {
+      // الغرفة ممتلئة
       setRoomFull(true);
     }
   }, [roomCode, navigate]);
@@ -282,6 +289,44 @@ const GameRoom = () => {
               </CardContent>
             </Card>
           </div>
+        )}
+
+        {/* Share Room Link for Host */}
+        {!isPlayer2 && !roomData.player2 && (
+          <Card className="max-w-2xl mx-auto">
+            <CardContent className="p-4">
+              <div className="text-center space-y-3">
+                <p className="text-sm font-medium text-blue-800">
+                  🔗 شارك هذا الرابط مع صديقك للانضمام:
+                </p>
+                <div className="bg-gray-100 p-3 rounded text-sm break-all text-gray-700">
+                  {`${window.location.origin}/play?r=${roomCode}`}
+                </div>
+                <Button 
+                  onClick={async () => {
+                    try {
+                      await navigator.clipboard.writeText(`${window.location.origin}/play?r=${roomCode}`);
+                      toast({
+                        title: "✅ تم نسخ الرابط!",
+                        description: "يمكنك الآن مشاركته مع صديقك",
+                      });
+                    } catch {
+                      toast({
+                        title: "❌ فشل في نسخ الرابط",
+                        description: "حاول نسخه يدوياً",
+                        variant: "destructive"
+                      });
+                    }
+                  }}
+                  variant="outline" 
+                  size="sm"
+                >
+                  <Copy className="ml-1 h-4 w-4" />
+                  نسخ الرابط
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
         )}
 
         {/* Controls */}

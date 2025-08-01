@@ -21,13 +21,11 @@ const Index = () => {
 
   const createNewGame = () => {
     const roomCode = generateRoomCode();
-    const link = `${window.location.origin}/play?r=${roomCode}`;
-    setRoomLink(link);
     
     // حفظ بيانات الغرفة في localStorage (مؤقتاً)
     const roomData = {
       player1: {
-        name: "مجهول",
+        name: "مضيف الغرفة",
         choice: null
       },
       player2: null,
@@ -36,10 +34,8 @@ const Index = () => {
     };
     localStorage.setItem(`room_${roomCode}`, JSON.stringify(roomData));
     
-    toast({
-      title: "🎉 تم إنشاء الغرفة بنجاح!",
-      description: "شارك الرابط مع صديقك لبدء اللعب",
-    });
+    // الانتقال مباشرة للغرفة مع تمييز أنه مضيف الغرفة
+    navigate(`/play?r=${roomCode}&host=true`);
   };
 
   const copyLink = async () => {
@@ -89,35 +85,6 @@ const Index = () => {
               <Plus className="ml-2 h-5 w-5" />
               🆕 إنشاء لعبة جديدة
             </Button>
-
-            {roomLink && (
-              <div className="space-y-3 p-4 bg-green-50 rounded-lg border border-green-200">
-                <p className="text-sm font-medium text-green-800">
-                  🔗 رابط الغرفة:
-                </p>
-                <div className="bg-white p-3 rounded border text-sm break-all text-gray-700">
-                  {roomLink}
-                </div>
-                <div className="flex gap-2">
-                  <Button 
-                    onClick={copyLink} 
-                    variant="outline" 
-                    size="sm" 
-                    className="flex-1"
-                  >
-                    <Copy className="ml-1 h-4 w-4" />
-                    نسخ الرابط
-                  </Button>
-                  <Button 
-                    onClick={joinGame} 
-                    size="sm" 
-                    className="flex-1"
-                  >
-                    دخول الغرفة
-                  </Button>
-                </div>
-              </div>
-            )}
           </CardContent>
         </Card>
 
