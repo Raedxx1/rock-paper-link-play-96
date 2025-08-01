@@ -27,7 +27,7 @@ const router = createBrowserRouter([
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
-      <ThemeProvider defaultTheme="light" storageKey="rock-paper-scissors-theme">
+      <ThemeProvider defaultTheme="dark" storageKey="rock-paper-scissors-theme">
         <RouterProvider router={router} />
         <Toaster />
       </ThemeProvider>
