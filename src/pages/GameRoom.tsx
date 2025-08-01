@@ -134,16 +134,17 @@ const GameRoom = () => {
     }
 
     // الانضمام للغرفة فقط إذا كانت فارغة
-    const { error } = await supabase
+    const { data: updateResult, error } = await supabase
       .from('game_rooms')
       .update({
         player2_name: playerName.trim(),
         game_status: 'playing'
       })
       .eq('id', roomCode)
-      .eq('player2_name', null); // شرط إضافي للتأكد من أن player2_name ما زال فارغ
+      .is('player2_name', null) // استخدام is بدلاً من eq للتحقق من null
+      .select(); // إضافة select للحصول على النتيجة
 
-    if (error) {
+    if (error || !updateResult || updateResult.length === 0) {
       toast({
         title: "❌ خطأ في الانضمام",
         description: "ربما انضم لاعب آخر في نفس الوقت، حاول مرة أخرى",
