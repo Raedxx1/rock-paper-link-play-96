@@ -2,34 +2,41 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Youtube, Users, Play, Heart } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
 
 interface YouTubeStatsData {
-  success?: boolean;
   subscriberCount: string;
-  rawCount?: string;
-  channelHandle?: string;
   error?: string;
 }
+
+const channelId = "UCx4ZTHHI-INbMCtqJKUaljg";
+const apiKey = "AIzaSyBt3o2l9-0b-HnsaZlwK1wTszwTxQbfUCU"; // ضع API Key الخاص بك هنا
 
 export const YouTubeStats = () => {
   const [stats, setStats] = useState<YouTubeStatsData>({ subscriberCount: '34.4K' });
   const [loading, setLoading] = useState(true);
 
+  // دالة لتنسيق العدد
+  const formatCount = (count: number) => {
+    if (count >= 1_000_000) return `${(count / 1_000_000).toFixed(1)}M`;
+    if (count >= 1_000) return `${(count / 1_000).toFixed(1)}K`;
+    return count.toString();
+  }
+
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        const { data, error } = await supabase.functions.invoke('get-youtube-stats');
-        
-        if (error) {
-          console.error('Error fetching YouTube stats:', error);
-          setStats({ subscriberCount: '34.4K', error: 'Failed to fetch stats' });
+        const res = await fetch(`https://www.googleapis.com/youtube/v3/channels?part=statistics&id=${channelId}&key=${apiKey}`);
+        const data = await res.json();
+
+        const count = data.items?.[0]?.statistics?.subscriberCount;
+        if (count) {
+          setStats({ subscriberCount: formatCount(Number(count)) });
         } else {
-          setStats(data || { subscriberCount: '34.4K' });
+          setStats({ subscriberCount: 'N/A', error: 'Unable to fetch count' });
         }
       } catch (error) {
-        console.error('Error calling function:', error);
-        setStats({ subscriberCount: '34.4K', error: 'Connection error' });
+        console.error('Error fetching YouTube stats:', error);
+        setStats({ subscriberCount: 'N/A', error: 'Connection error' });
       } finally {
         setLoading(false);
       }
@@ -42,7 +49,6 @@ export const YouTubeStats = () => {
     <Card className="bg-gradient-to-br from-purple-500/15 via-blue-500/10 to-red-500/15 border-purple-300/30 hover:border-purple-400/50 transition-all duration-300 shadow-lg backdrop-blur-sm">
       <CardContent className="p-5">
         <div className="flex items-center gap-4">
-          {/* صورة القناة */}
           <div className="relative">
             <img 
               src="/lovable-uploads/7d6bcbf7-d370-49f3-9130-a8118efd3188.png" 
@@ -55,7 +61,6 @@ export const YouTubeStats = () => {
             </div>
           </div>
           
-          {/* معلومات القناة */}
           <div className="flex-1">
             <div className="flex items-center gap-2 mb-1">
               <h3 className="font-bold text-xl text-white drop-shadow-lg">
@@ -73,7 +78,6 @@ export const YouTubeStats = () => {
               Epic: iXDreemB52 | Steam: iXDreemB52 | Code: XDB52
             </p>
             
-            {/* الإحصائيات */}
             <div className="flex gap-3 text-xs">
               <div className="flex items-center gap-1 bg-white/10 px-2 py-1 rounded-full">
                 <Users className="h-3 w-3 text-red-400" />
@@ -98,7 +102,6 @@ export const YouTubeStats = () => {
           </div>
         </div>
         
-        {/* الروابط */}
         <div className="mt-4 pt-3 border-t border-white/20 space-y-2">
           <div className="flex gap-2">
             <a 
