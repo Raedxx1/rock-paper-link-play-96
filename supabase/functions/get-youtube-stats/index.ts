@@ -24,7 +24,7 @@ serve(async (req) => {
       }
     })
     
-    let subscriberCount = '34.4K' // القيمة الافتراضية
+    let subscriberCount = '34.8K' // القيمة الافتراضية
     
     if (response.ok) {
       const data = await response.json()
