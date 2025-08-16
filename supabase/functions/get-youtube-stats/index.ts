@@ -1,80 +1,71 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
+// إعدادات CORS
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+};
+
+// دالة لتنسيق الأعداد (عدد المشتركين)
+function formatCount(count: number): string {
+  if (count >= 1_000_000) return `${(count / 1_000_000).toFixed(1)}M`;
+  if (count >= 1_000) return `${(count / 1_000).toFixed(1)}K`;
+  return count.toString();
 }
 
-serve(async (req) => {
-  if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders })
-  }
-
+// دالة للحصول على عدد المشتركين من LiveCounts.io
+async function getLiveSubscriberCount(channelId: string): Promise<string> {
   try {
-    // استخدام LiveCounts.io للحصول على الإحصائيات الحية
-    const channelId = 'UCx4ZTHHI-INbMCtqJKUaljg' // معرف قناة XDreemB52
-    console.log(`Getting live stats for channel: ${channelId}`)
-    
-    // محاولة الحصول على البيانات من LiveCounts.io
-    const liveCountsUrl = `https://livecounts.io/api/youtube-live-subscriber-count/${channelId}`
-    
-    const response = await fetch(liveCountsUrl, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-      }
-    })
-    
-    let subscriberCount = '34.8K' // القيمة الافتراضية
-    
-    if (response.ok) {
-      const data = await response.json()
-      console.log('LiveCounts response:', data)
-      
-      if (data && typeof data.subscriberCount === 'number') {
-        const rawCount = data.subscriberCount
-        
-        // تنسيق العدد
-        const formatCount = (count: number): string => {
-          if (count >= 1000000) {
-            return `${(count / 1000000).toFixed(1)}M`
-          } else if (count >= 1000) {
-            return `${(count / 1000).toFixed(1)}K`
-          }
-          return count.toString()
-        }
-        
-        subscriberCount = formatCount(rawCount)
-        console.log(`Formatted count: ${subscriberCount}`)
-      }
-    } else {
-      console.log('LiveCounts API not available, using fallback')
+    const url = `https://livecounts.io/api/youtube-live-subscriber-count/${channelId}`;
+    const response = await fetch(url, {
+      headers: { "User-Agent": "Mozilla/5.0" },
+    });
+
+    if (!response.ok) {
+      console.warn("LiveCounts API returned non-OK status:", response.status);
+      return "N/A";
     }
 
-    return new Response(
-      JSON.stringify({ 
-        success: true,
-        subscriberCount: subscriberCount,
-        channelId: channelId,
-        channelHandle: 'xdreemb52',
-        source: 'livecounts'
-      }),
-      { 
-        status: 200,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      },
-    )
+    const data = await response.json();
+    const count = data?.subscriberCount;
 
+    if (typeof count === "number") {
+      return formatCount(count);
+    } else {
+      console.warn("LiveCounts response missing subscriberCount:", data);
+      return "N/A";
+    }
   } catch (error) {
-    console.error('Error fetching YouTube stats:', error)
-    return new Response(
-      JSON.stringify({ 
-        error: 'Internal server error',
-        subscriberCount: '999K+' // fallback value
-      }),
-      { 
-        status: 200,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      },
-    )
+    console.error("Error fetching subscriber count:", error);
+    return "N/A";
   }
-})
+}
+
+// دالة لإنشاء استجابة JSON
+function jsonResponse(data: any, status = 200) {
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: { "Content-Type": "application/json", ...corsHeaders },
+  });
+}
+
+// بدء السيرفر
+serve(async (req) => {
+  if (req.method === "OPTIONS") {
+    return new Response("ok", { headers: corsHeaders });
+  }
+
+  const channelId = "UCx4ZTHHI-INbMCtqJKUaljg";
+  const channelHandle = "xdreemb52";
+
+  const subscriberCount = await getLiveSubscriberCount(channelId);
+
+  return jsonResponse({
+    success: true,
+    channelId,
+    channelHandle,
+    subscriberCount,
+    source: "livecounts",
+  });
+});
