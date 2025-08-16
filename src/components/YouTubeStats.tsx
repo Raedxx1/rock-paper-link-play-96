@@ -1,21 +1,29 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Youtube, Users, Play, Heart } from 'lucide-react';
+import { Youtube, Users, Play, Eye } from 'lucide-react';
 
 interface YouTubeStatsData {
   subscriberCount: string;
+  videoCount: string;
+  viewCount: string;
+  liveStatus: 'LIVE' | 'OFFLINE';
   error?: string;
 }
 
 const channelId = "UCx4ZTHHI-INbMCtqJKUaljg";
-const apiKey = "AIzaSyBt3o2l9-0b-HnsaZlwK1wTszwTxQbfUCU"; // ضع API Key الخاص بك هنا
+const apiKey = "AIzaSyBt3o2l9-0b-HnsaZlwK1wTszwTxQbfUCU"; // ضع API Key الخاص بك
 
 export const YouTubeStats = () => {
-  const [stats, setStats] = useState<YouTubeStatsData>({ subscriberCount: '34.4K' });
+  const [stats, setStats] = useState<YouTubeStatsData>({
+    subscriberCount: '34.4K',
+    videoCount: '534',
+    viewCount: '1M',
+    liveStatus: 'OFFLINE'
+  });
   const [loading, setLoading] = useState(true);
 
-  // دالة لتنسيق العدد
+  // دالة لتنسيق الأعداد
   const formatCount = (count: number) => {
     if (count >= 1_000_000) return `${(count / 1_000_000).toFixed(1)}M`;
     if (count >= 1_000) return `${(count / 1_000).toFixed(1)}K`;
@@ -25,18 +33,29 @@ export const YouTubeStats = () => {
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        const res = await fetch(`https://www.googleapis.com/youtube/v3/channels?part=statistics&id=${channelId}&key=${apiKey}`);
+        const res = await fetch(
+          `https://www.googleapis.com/youtube/v3/channels?part=statistics,snippet,brandingSettings&id=${channelId}&key=${apiKey}`
+        );
         const data = await res.json();
+        const statsData = data.items?.[0]?.statistics;
 
-        const count = data.items?.[0]?.statistics?.subscriberCount;
-        if (count) {
-          setStats({ subscriberCount: formatCount(Number(count)) });
-        } else {
-          setStats({ subscriberCount: 'N/A', error: 'Unable to fetch count' });
-        }
+        const subscriberCount = statsData?.subscriberCount ? formatCount(Number(statsData.subscriberCount)) : 'N/A';
+        const videoCount = statsData?.videoCount ? formatCount(Number(statsData.videoCount)) : 'N/A';
+        const viewCount = statsData?.viewCount ? formatCount(Number(statsData.viewCount)) : 'N/A';
+
+        // حالة البث المباشر (LIVE) نتحقق من snippet.liveBroadcastContent
+        const liveStatus = data.items?.[0]?.snippet?.liveBroadcastContent === 'live' ? 'LIVE' : 'OFFLINE';
+
+        setStats({ subscriberCount, videoCount, viewCount, liveStatus });
       } catch (error) {
         console.error('Error fetching YouTube stats:', error);
-        setStats({ subscriberCount: 'N/A', error: 'Connection error' });
+        setStats({
+          subscriberCount: 'N/A',
+          videoCount: 'N/A',
+          viewCount: 'N/A',
+          liveStatus: 'OFFLINE',
+          error: 'Connection error'
+        });
       } finally {
         setLoading(false);
       }
@@ -55,10 +74,12 @@ export const YouTubeStats = () => {
               alt="XDreemB52 لوجو" 
               className="w-16 h-16 rounded-full border-2 border-yellow-400/50 shadow-lg object-cover"
             />
-            <div className="absolute -bottom-1 -right-1 bg-red-500 text-white text-xs px-1.5 py-0.5 rounded-full flex items-center gap-1">
-              <Play className="h-2.5 w-2.5" fill="currentColor" />
-              LIVE
-            </div>
+            {stats.liveStatus === 'LIVE' && (
+              <div className="absolute -bottom-1 -right-1 bg-red-500 text-white text-xs px-1.5 py-0.5 rounded-full flex items-center gap-1">
+                <Play className="h-2.5 w-2.5" fill="currentColor" />
+                LIVE
+              </div>
+            )}
           </div>
           
           <div className="flex-1">
@@ -81,22 +102,20 @@ export const YouTubeStats = () => {
             <div className="flex gap-3 text-xs">
               <div className="flex items-center gap-1 bg-white/10 px-2 py-1 rounded-full">
                 <Users className="h-3 w-3 text-red-400" />
-                <span className="text-white font-semibold">
-                  {loading ? '...' : stats.subscriberCount}
-                </span>
+                <span className="text-white font-semibold">{loading ? '...' : stats.subscriberCount}</span>
                 <span className="text-white/80">مشترك</span>
               </div>
               
               <div className="flex items-center gap-1 bg-white/10 px-2 py-1 rounded-full">
                 <Play className="h-3 w-3 text-green-400" />
-                <span className="text-white font-semibold">534</span>
+                <span className="text-white font-semibold">{loading ? '...' : stats.videoCount}</span>
                 <span className="text-white/80">فيديو</span>
               </div>
               
               <div className="flex items-center gap-1 bg-white/10 px-2 py-1 rounded-full">
-                <Heart className="h-3 w-3 text-pink-400" />
-                <span className="text-white font-semibold">1K+</span>
-                <span className="text-white/80">إعجاب</span>
+                <Eye className="h-3 w-3 text-pink-400" />
+                <span className="text-white font-semibold">{loading ? '...' : stats.viewCount}</span>
+                <span className="text-white/80">مشاهدة</span>
               </div>
             </div>
           </div>
