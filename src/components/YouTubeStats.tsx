@@ -63,21 +63,13 @@ export const YouTubeStats = () => {
   }, []);
 
   return (
-    <Card
-      className="
-        bg-white text-gray-900
-        dark:bg-gradient-to-br dark:from-purple-500/15 dark:via-blue-500/10 dark:to-red-500/15
-        dark:text-white border dark:border-purple-300/30
-        hover:dark:border-purple-400/50
-        transition-all duration-300 shadow-lg backdrop-blur-sm
-      "
-    >
+    <Card className="bg-white text-gray-900 border border-gray-200 shadow-lg transition-all duration-300">
       <CardContent className="p-5">
         <div className="flex items-center gap-4">
           <div className="relative">
-            <img
-              src="/lovable-uploads/7d6bcbf7-d370-49f3-9130-a8118efd3188.png"
-              alt="XDreemB52 لوجو"
+            <img 
+              src="/lovable-uploads/7d6bcbf7-d370-49f3-9130-a8118efd3188.png" 
+              alt="XDreemB52 لوجو" 
               className="w-16 h-16 rounded-full border-2 border-yellow-400/50 shadow-lg object-cover"
             />
             {stats.liveStatus === 'LIVE' && (
@@ -87,49 +79,49 @@ export const YouTubeStats = () => {
               </div>
             )}
           </div>
-
+          
           <div className="flex-1">
             <div className="flex items-center gap-2 mb-1">
-              <h3 className="font-bold text-xl text-gray-900 dark:text-white drop-shadow-lg">
+              <h3 className="font-bold text-xl text-gray-900">
                 XDreemB52 | دريم
               </h3>
-              <Badge variant="secondary" className="bg-yellow-500/20 text-yellow-700 dark:text-yellow-300 border-yellow-400/30 text-xs">
+              <Badge variant="secondary" className="bg-yellow-100 text-yellow-700 border-yellow-300 text-xs">
                 <Youtube className="h-3 w-3 mr-1" />
                 ✓
               </Badge>
             </div>
-            <p className="text-sm text-gray-700 dark:text-white/90 mb-2">
+            <p className="text-sm text-gray-700 mb-2">
               🕌 مهند | 22 سنة | 🇸🇦 سعودي | قريب مكة
             </p>
-            <p className="text-xs text-gray-500 dark:text-white/70 mb-2">
+            <p className="text-xs text-gray-500 mb-2">
               Epic: iXDreemB52 | Steam: iXDreemB52 | Code: XDB52
             </p>
-
+            
             <div className="flex gap-3 text-xs">
-              <div className="flex items-center gap-1 bg-gray-100 dark:bg-white/10 px-2 py-1 rounded-full">
+              <div className="flex items-center gap-1 bg-gray-100 px-2 py-1 rounded-full">
                 <Users className="h-3 w-3 text-red-500" />
-                <span className="text-gray-900 dark:text-white font-semibold">{loading ? '...' : stats.subscriberCount}</span>
-                <span className="text-gray-600 dark:text-white/80">مشترك</span>
+                <span className="text-gray-900 font-semibold">{loading ? '...' : stats.subscriberCount}</span>
+                <span className="text-gray-600">مشترك</span>
               </div>
-
-              <div className="flex items-center gap-1 bg-gray-100 dark:bg-white/10 px-2 py-1 rounded-full">
+              
+              <div className="flex items-center gap-1 bg-gray-100 px-2 py-1 rounded-full">
                 <Play className="h-3 w-3 text-green-500" />
-                <span className="text-gray-900 dark:text-white font-semibold">{loading ? '...' : stats.videoCount}</span>
-                <span className="text-gray-600 dark:text-white/80">فيديو</span>
+                <span className="text-gray-900 font-semibold">{loading ? '...' : stats.videoCount}</span>
+                <span className="text-gray-600">فيديو</span>
               </div>
-
-              <div className="flex items-center gap-1 bg-gray-100 dark:bg-white/10 px-2 py-1 rounded-full">
+              
+              <div className="flex items-center gap-1 bg-gray-100 px-2 py-1 rounded-full">
                 <Eye className="h-3 w-3 text-pink-500" />
-                <span className="text-gray-900 dark:text-white font-semibold">{loading ? '...' : stats.viewCount}</span>
-                <span className="text-gray-600 dark:text-white/80">مشاهدة</span>
+                <span className="text-gray-900 font-semibold">{loading ? '...' : stats.viewCount}</span>
+                <span className="text-gray-600">مشاهدة</span>
               </div>
             </div>
           </div>
         </div>
-
-        <div className="mt-4 pt-3 border-t border-gray-200 dark:border-white/20 space-y-2">
+        
+        <div className="mt-4 pt-3 border-t border-gray-200 space-y-2">
           <div className="flex gap-2">
-            <a
+            <a 
               href="https://youtube.com/@xdreemb52"
               target="_blank"
               rel="noopener noreferrer"
@@ -138,7 +130,7 @@ export const YouTubeStats = () => {
               <Youtube className="h-3 w-3" />
               اشترك
             </a>
-            <a
+            <a 
               href="https://lnk.bio/XDreemB52"
               target="_blank"
               rel="noopener noreferrer"
