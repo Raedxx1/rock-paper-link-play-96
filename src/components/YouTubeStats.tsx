@@ -21,6 +21,15 @@ export const YouTubeStats = () => {
     viewCount: '1M',
     liveStatus: 'OFFLINE'
   });
+  <div className={`flex items-center gap-1 px-2 py-1 rounded-full ${
+  theme === 'dark' ? 'bg-white/10 text-white' : 'bg-gray-100 text-black'
+}`}>
+  <Users className={`h-3 w-3 ${theme === 'dark' ? 'text-red-400' : 'text-red-600'}`} />
+  <span className="font-semibold">{stats.subscriberCount}</span>
+  <span className={`${theme === 'dark' ? 'text-white/80' : 'text-black/70'}`}>مشترك</span>
+</div>
+ });
+  const [loading, setLoading] = useState(true);
 
   // دالة لتنسيق الأعداد
   const formatCount = (count: number) => {
