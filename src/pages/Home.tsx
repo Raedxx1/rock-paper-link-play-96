@@ -27,29 +27,32 @@ const Home = () => {
     setLoading(true);
 
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('tic_tac_toe_rooms')
         .insert({
           id: roomCode,
-          board: JSON.stringify(Array(9).fill('')),
+          board: JSON.stringify(Array(9).fill('')),  // مصفوفة فارغة
           current_player: 'X',
           winner: null,
-          player1_name: "مضيف XO",
-          game_status: 'waiting'
-        });
+          game_status: 'waiting',  // حالة اللعبة
+          player1_name: "مضيف XO",  // اسم اللاعب الأول
+        }).single();  // تأكد من إدخال صف واحد فقط
 
       if (error) {
+        console.error('Error creating room:', error.message);  // طباعة الأخطاء في الكونسول للمراجعة
         toast({
           title: '❌ خطأ في إنشاء الغرفة',
-          description: 'حاول مرة أخرى',
+          description: `تفاصيل الخطأ: ${error.message}`,
           variant: 'destructive',
         });
         setLoading(false);
         return;
       }
 
+      // إذا تم إنشاء الغرفة بنجاح
       navigate(`/tic-tac-toe?r=${roomCode}&host=true`);
     } catch (error) {
+      console.error('Error in connection:', error);  // طباعة الأخطاء في الكونسول
       toast({
         title: '❌ خطأ في الاتصال',
         description: 'تأكد من اتصالك بالإنترنت',
