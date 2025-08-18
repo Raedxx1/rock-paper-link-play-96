@@ -118,7 +118,6 @@ const TicTacToeRoom = () => {
     return () => {
       supabase.removeChannel(ch);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [roomCode]);
 
   // انضمام كلاعب ثاني
@@ -211,17 +210,14 @@ const TicTacToeRoom = () => {
     }
   };
 
-  // واجهة بدون كود غرفة: أنشئ غرفة
   if (!roomCode) {
     return (
       <div className="min-h-screen flex items-center justify-center p-4" dir="rtl">
         <Card className="w-full max-w-md">
-          <CardHeader className="flex items-center justify-between">
+          <CardHeader>
             <CardTitle>❌⭕ لعبة XO</CardTitle>
-            <ThemeToggle />
           </CardHeader>
-          <CardContent className="space-y-4">
-            <p className="text-sm text-gray-600">اضغط لإنشاء غرفة جديدة ومشاركة الرابط مع صديقك.</p>
+          <CardContent>
             <Button onClick={createRoom} className="w-full py-6 text-lg">
               إنشاء غرفة جديدة
             </Button>
@@ -235,111 +231,38 @@ const TicTacToeRoom = () => {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center" dir="rtl">
-        <div className="text-center">⏳ جارٍ التحميل...</div>
+        <div>⏳ جارٍ التحميل...</div>
       </div>
     );
   }
-
-  // الغرفة غير موجودة
-  if (!room) {
-    return (
-      <div className="min-h-screen flex items-center justify-center" dir="rtl">
-        <div className="text-center">
-          <div className="text-4xl mb-2">❌</div>
-          <p>الغرفة غير موجودة</p>
-          <Button onClick={() => navigate('/')} className="mt-4">الرجوع للرئيسية</Button>
-        </div>
-      </div>
-    );
-  }
-
-  // لو أنت مو المضيف ولسه اللاعب الثاني ما سجل اسمه
-  const needsJoin = !isHost && !room.player2_name;
 
   return (
     <div className="min-h-screen p-4 flex items-center justify-center" dir="rtl">
       <div className="w-full max-w-md space-y-4">
-        {/* الهيدر */}
         <div className="flex items-center justify-between">
-          <Button variant="outline" onClick={() => navigate('/')}>&larr; الرئيسية</Button>
+          <Button onClick={() => navigate('/')}>&larr; العودة للرئيسية</Button>
           <ThemeToggle />
         </div>
-
-        {/* الانضمام كلاعب ثاني */}
-        {needsJoin && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <UserPlus className="h-5 w-5" /> انضمام للعبة
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <Input
-                placeholder="اسمك (لاعب O)"
-                value={playerName}
-                onChange={(e) => setPlayerName(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && joinAsPlayer2()}
-                className="text-right"
-              />
-              <Button className="w-full" disabled={!playerName.trim()} onClick={joinAsPlayer2}>
-                انضم الآن
-              </Button>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* معلومات الغرفة */}
+        
+        {/* اللوحة */}
         <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center justify-between">
-              <span>❌⭕ XO — {room.id}</span>
-              <div className="flex gap-2">
-                <Button variant="outline" size="sm" onClick={copyLink}>
-                  <Copy className="h-4 w-4 ml-1" /> نسخ الرابط
-                </Button>
-                <Button variant="outline" size="sm" onClick={() => window.open(`${window.location.origin}/tic-tac-toe?r=${roomCode}`, "_blank")}>
-                  <Share2 className="h-4 w-4 ml-1" /> فتح بالرابط
-                </Button>
-              </div>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="text-sm text-gray-600">
-              <div>👤 X: {room.player1_name || "مضيف XO"} {isHost && "(أنت)"}</div>
-              <div>👤 O: {room.player2_name || "بإنتظار الانضمام"} {iAmO && "(أنت)"}</div>
-            </div>
-
-            <div className="text-center font-semibold">
-              {room.winner
-                ? (room.winner === "tie" ? "🤝 تعادل" : `🥳 الفائز: ${room.winner}`)
-                : (room.current_player === "X" ? "دور X" : "دور O")}
-              {myMark && !room.winner && (
-                <div className="text-xs text-gray-500 mt-1">دورك؟ {room.current_player === myMark ? "نعم" : "لا"}</div>
-              )}
-            </div>
-
-            {/* اللوح */}
-            <div className="grid grid-cols-3 gap-2 select-none">
-              {board.map((cell, i) => (
+          <CardContent>
+            <div className="grid grid-cols-3 gap-2">
+              {board.map((cell, index) => (
                 <button
-                  key={i}
-                  onClick={() => playAt(i)}
-                  className="h-20 rounded-xl border border-gray-300 dark:border-gray-700
-                             bg-white dark:bg-gray-900 text-3xl font-bold
-                             flex items-center justify-center hover:bg-gray-50 dark:hover:bg-gray-800 transition"
+                  key={index}
+                  onClick={() => playAt(index)}
+                  className="h-20 rounded-xl border bg-gray-700 text-3xl font-bold flex items-center justify-center"
                 >
                   {cell}
                 </button>
               ))}
             </div>
-
-            <div className="flex gap-2">
-              <Button className="flex-1" variant="secondary" onClick={copyLink}>
-                <Copy className="h-4 w-4 ml-1" /> مشاركة الرابط
+            <div className="mt-4 flex gap-2">
+              <Button onClick={resetBoard} disabled={!room.winner && board.every(c => !!c)}>
+                إعادة الضبط
               </Button>
-              <Button className="flex-1" variant="outline" onClick={resetBoard} disabled={!room.winner && board.some(c => !c) }>
-                <RotateCcw className="h-4 w-4 ml-1" /> إعادة الجولة
-              </Button>
+              <Button onClick={copyLink}>نسخ الرابط</Button>
             </div>
           </CardContent>
         </Card>
@@ -349,4 +272,4 @@ const TicTacToeRoom = () => {
 };
 
 export default TicTacToeRoom;
-    
+      
