@@ -1,16 +1,13 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { ThemeToggle } from '@/components/ThemeToggle';
-import { Plus } from 'lucide-react';
+import { toast } from '@/hooks/use-toast';
 
 // توليد رمز غرفة فريد
 const generateRoomCode = () => {
-  const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
-  let result = 'ttt-';
+  const chars = "abcdefghijklmnopqrstuvwxyz0123456789";
+  let result = "ttt-";
   for (let i = 0; i < 5; i++) {
     result += chars.charAt(Math.floor(Math.random() * chars.length));
   }
@@ -23,7 +20,7 @@ const Home = () => {
 
   // إنشاء غرفة جديدة
   const createNewGame = async () => {
-    const roomCode = generateRoomCode();
+    const roomCode = generateRoomCode(); // توليد رمز فريد للغرفة
     setLoading(true);
 
     try {
@@ -31,17 +28,16 @@ const Home = () => {
         .from('tic_tac_toe_rooms')
         .insert({
           id: roomCode,
-          board: JSON.stringify(Array(9).fill('')), // مصفوفة فارغة
-          current_player: 'X',
-          winner: null,
+          board: JSON.stringify(Array(9).fill('')), // مصفوفة فارغة للوحة
+          current_player: 'X',  // اللاعب الأول
+          winner: null,  // لا يوجد فائز بعد
           game_status: 'waiting',  // حالة اللعبة
           player1_name: "مضيف XO",  // اسم اللاعب الأول
-        }).single();  // تأكد من إدخال صف واحد فقط
+        });
 
       if (error) {
-        console.error('Error creating room:', error.message);
         toast({
-          title: '❌ خطأ في إنشاء الغرفة',
+          title: "❌ خطأ في إنشاء الغرفة",
           description: `تفاصيل الخطأ: ${error.message}`,
           variant: 'destructive',
         });
@@ -49,14 +45,13 @@ const Home = () => {
         return;
       }
 
-      // التوجيه إلى صفحة اللعبة مع رمز الغرفة
+      // بعد إنشاء الغرفة بنجاح، قم بتوجيه المستخدم إلى صفحة اللعبة مع رمز الغرفة
       const roomLink = `/tic-tac-toe?r=${roomCode}&host=true`;
-      console.log('تم إنشاء الغرفة بنجاح، التوجيه إلى: ', roomLink);
-      navigate(roomLink);  // التوجيه إلى صفحة اللعبة مع الرابط الجديد
+      navigate(roomLink);
     } catch (error) {
       console.error('Error in connection:', error);
       toast({
-        title: '❌ خطأ في الاتصال',
+        title: "❌ فشل في الاتصال",
         description: 'تأكد من اتصالك بالإنترنت',
         variant: 'destructive',
       });
@@ -65,22 +60,11 @@ const Home = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4" dir="rtl">
-      <div className="w-full max-w-md space-y-6">
-        <Card>
-          <CardHeader className="text-center">
-            <CardTitle>إكس-أو</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Button
-              onClick={createNewGame}
-              className="w-full py-6 text-lg bg-gradient-to-r from-blue-600 to-purple-600 text-white border-0 shadow-lg"
-              disabled={loading}
-            >
-              {loading ? 'جارٍ إنشاء الغرفة...' : 'إنشاء غرفة جديدة'}
-            </Button>
-          </CardContent>
-        </Card>
+    <div className="min-h-screen flex items-center justify-center">
+      <div className="space-y-4">
+        <Button onClick={createNewGame} disabled={loading}>
+          {loading ? 'جارٍ إنشاء الغرفة...' : 'إنشاء غرفة جديدة'}
+        </Button>
       </div>
     </div>
   );
