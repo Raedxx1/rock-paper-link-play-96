@@ -10,7 +10,7 @@ import './index.css';
 import Index from './pages/Index';      // هذه قائمتك الرئيسية الحالية
 import NotFound from './pages/NotFound';
 import GameRoom from './pages/GameRoom'; // حجرة ورقة مقص
-import TicTacToeRoom from './pages/TicTacToeRoom.tsx'; // 🔥 صفحة XO الجديدة
+import TicTacToeRoom from './pages/Home.tsx'; // 🔥 صفحة XO الجديدة
 
 const queryClient = new QueryClient();
 
