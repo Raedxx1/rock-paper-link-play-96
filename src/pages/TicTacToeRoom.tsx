@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/integrations/supabase/client"; // تأكد من أن الاتصال صحيح هنا
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -98,4 +98,185 @@ const Home = () => {
   );
 };
 
-export default Home;
+const TicTacToeRoom = () => {
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const roomCode = searchParams.get("r");
+  const isHost = searchParams.get("host") === "true";
+
+  const [sessionId] = useState(() => `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`);
+  const [playerName, setPlayerName] = useState("");
+  const [room, setRoom] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  const board = useMemo(() => room ? JSON.parse(room.board) : Array(9).fill(""), [room]);
+
+  // جلب بيانات الغرفة
+  const fetchRoomData = async () => {
+    if (!roomCode) return;
+    setLoading(true);
+    const { data, error } = await supabase
+      .from("tic_tac_toe_rooms")
+      .select("*")
+      .eq("id", roomCode)
+      .single();
+
+    if (error || !data) {
+      toast({ title: "❌ الغرفة غير موجودة", description: "تأكد من الرابط", variant: "destructive" });
+      setLoading(false);
+      return;
+    }
+    setRoom(data);
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    if (!roomCode) return;
+    fetchRoomData();
+
+    const subscription = supabase
+      .channel(`ttt-${roomCode}`)
+      .on("postgres_changes", {
+        event: "*",
+        schema: "public",
+        table: "tic_tac_toe_rooms",
+        filter: `id=eq.${roomCode}`,
+      }, (payload) => {
+        setRoom(payload.new);
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(subscription);
+    };
+  }, [roomCode]);
+
+  // انضمام كلاعب 2
+  const joinAsPlayer2 = async () => {
+    if (!roomCode || !playerName.trim()) return;
+
+    const { error } = await supabase
+      .from("tic_tac_toe_rooms")
+      .update({ player2_name: playerName.trim(), player2_session_id: sessionId })
+      .eq("id", roomCode);
+
+    if (error) {
+      toast({ title: "❌ فشل الانضمام", description: "حاول مرة أخرى", variant: "destructive" });
+      return;
+    }
+    toast({ title: "✅ تم الانضمام بنجاح!", description: "مرحباً بك في اللعبة" });
+  };
+
+  // تنفيذ الحركة
+  const playAt = async (index: number) => {
+    if (!room || room.winner || room.current_player !== (isHost ? "X" : "O")) return;
+
+    const newBoard = [...board];
+    if (newBoard[index]) return;
+
+    newBoard[index] = room.current_player;
+    const winner = checkWinner(newBoard);
+    const nextPlayer = room.current_player === "X" ? "O" : "X";
+
+    const { error } = await supabase
+      .from("tic_tac_toe_rooms")
+      .update({
+        board: JSON.stringify(newBoard),
+        current_player: winner ? room.current_player : nextPlayer,
+        winner,
+      })
+      .eq("id", roomCode);
+
+    if (error) {
+      toast({ title: "❌ فشل حفظ الحركة", description: "حاول مجدداً", variant: "destructive" });
+    }
+  };
+
+  const resetRound = async () => {
+    if (!roomCode) return;
+
+    const { error } = await supabase
+      .from("tic_tac_toe_rooms")
+      .update({ board: JSON.stringify(Array(9).fill("")), current_player: "X", winner: null })
+      .eq("id", roomCode);
+
+    if (error) {
+      toast({ title: "❌ فشل في إعادة الجولة", description: "حاول مجدداً", variant: "destructive" });
+    }
+  };
+
+  const resetGame = async () => {
+    if (!roomCode) return;
+
+    const { error } = await supabase
+      .from("tic_tac_toe_rooms")
+      .update({ board: JSON.stringify(Array(9).fill("")), player1_score: 0, player2_score: 0, current_round: 1, winner: null })
+      .eq("id", roomCode);
+
+    if (error) {
+      toast({ title: "❌ فشل في إعادة اللعبة", description: "حاول مجدداً", variant: "destructive" });
+    }
+  };
+
+  const shareRoom = async () => {
+    const link = `${window.location.origin}/tic-tac-toe?r=${roomCode}`;
+    try {
+      await navigator.clipboard.writeText(link);
+      toast({ title: "✅ تم نسخ الرابط", description: "أرسله لصديقك للانضمام" });
+    } catch {
+      toast({ title: "❌ فشل النسخ", description: "انسخه يدوياً", variant: "destructive" });
+    }
+  };
+
+  if (!roomCode) {
+    return <div>رمز الغرفة مطلوب</div>;
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center" dir="rtl">
+        <div>⏳ جارٍ التحميل...</div>
+      </div>
+    );
+  }
+
+  return (
+  <div className="min-h-screen p-4 flex items-center justify-center" dir="rtl">
+    <div className="w-full max-w-md space-y-4">
+      <div className="flex items-center justify-between">
+        <Button onClick={() => navigate("/")}>← العودة للرئيسية</Button>
+        <ThemeToggle />
+      </div>
+
+      <Card>
+        <CardContent>
+          <div className="grid grid-cols-3 gap-2">
+            {board.map((cell, i) => (
+              <button
+                key={i}
+                onClick={() => playAt(i)}
+                className="h-20 rounded-xl border bg-gray-700 text-3xl font-bold flex items-center justify-center"
+              >
+                {cell}
+              </button>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      <div className="flex gap-2">
+        <Button className="w-full" onClick={resetGame}>
+          <RotateCcw className="h-4 w-4" /> إعادة اللعبة
+        </Button>
+        <Button className="w-full" onClick={resetRound}>
+          <RotateCcw className="h-4 w-4" /> إعادة الجولة
+        </Button>
+      </div>
+
+      <Button className="w-full" onClick={shareRoom}>
+        <Copy className="h-4 w-4" /> نسخ الرابط
+      </Button>
+    </div>
+  </div>
+);
+  
