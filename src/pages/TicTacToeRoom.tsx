@@ -38,7 +38,7 @@ const TicTacToeRoom = () => {
           description: 'رمز الغرفة غير موجود',
           variant: 'destructive',
         });
-        setLoading(false);
+        setLoading(false); // إيقاف التحميل إذا كان الرابط خاطئًا
         return;
       }
 
@@ -56,7 +56,7 @@ const TicTacToeRoom = () => {
             description: 'تأكد من الرابط',
             variant: 'destructive',
           });
-          setLoading(false);
+          setLoading(false); // إيقاف التحميل عند فشل الجلب
           return;
         }
         setRoom(data);
@@ -68,7 +68,7 @@ const TicTacToeRoom = () => {
           description: 'فشل في تحميل البيانات من السيرفر',
           variant: 'destructive',
         });
-        setLoading(false);
+        setLoading(false); // إيقاف التحميل إذا حدث خطأ في الاتصال
       }
     };
 
