@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Copy, Plus, Gamepad2 } from "lucide-react";
+import { Plus, Gamepad2 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -11,12 +11,12 @@ import gamingBg from "@/assets/gaming-bg.jpg";
 
 const Index = () => {
   const navigate = useNavigate();
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(false); // لتحديد حالة التحميل
 
   // توليد رمز الغرفة
   const generateRoomCode = () => {
-    const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
-    let result = 'ttt-';
+    const chars = "abcdefghijklmnopqrstuvwxyz0123456789";
+    let result = "ttt-";
     for (let i = 0; i < 5; i++) {
       result += chars.charAt(Math.floor(Math.random() * chars.length));
     }
@@ -67,9 +67,9 @@ const Index = () => {
       dir="rtl"
       style={{
         backgroundImage: `url(${gamingBg})`,
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-        backgroundRepeat: 'no-repeat',
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+        backgroundRepeat: "no-repeat",
       }}
     >
       <div className="absolute inset-0 bg-black/40 dark:bg-black/60"></div>
@@ -77,8 +77,12 @@ const Index = () => {
       <div className="relative z-10 w-full max-w-md space-y-6">
         <div className="flex justify-between items-center">
           <div className="text-sm text-white/90">
-            <p>💻 مبرمج من قبل: <span className="font-semibold text-blue-300">شاورما جيمر</span></p>
-            <p>🎮 مخصص لـ: <span className="font-semibold text-purple-300">اكس دريم</span></p>
+            <p>
+              💻 مبرمج من قبل: <span className="font-semibold text-blue-300">شاورما جيمر</span>
+            </p>
+            <p>
+              🎮 مخصص لـ: <span className="font-semibold text-purple-300">اكس دريم</span>
+            </p>
           </div>
           <ThemeToggle />
         </div>
