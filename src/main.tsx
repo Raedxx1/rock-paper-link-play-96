@@ -1,4 +1,4 @@
-// src/index.tsx أو src/main.tsx (استعمل نفس اسم الملف الموجود عندك)
+//  أو src/main.tsx (استعمل نفس اسم الملف الموجود عندك)
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { createBrowserRouter, RouterProvider } from 'react-router-dom';
