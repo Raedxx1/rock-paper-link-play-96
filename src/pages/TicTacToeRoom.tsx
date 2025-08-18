@@ -2,6 +2,8 @@ import { useState, useEffect, useMemo } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
+import { Button } from '@/components/ui/button';
+import { RotateCcw } from 'lucide-react';
 
 // التحقق من الفائز
 function checkWinner(board: string[]): string | null {
