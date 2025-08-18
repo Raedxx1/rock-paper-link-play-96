@@ -1,88 +1,76 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Plus, Gamepad2 } from "lucide-react";
-import { toast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
-import { ThemeToggle } from "@/components/ThemeToggle";
-import { YouTubeStats } from "@/components/YouTubeStats";
-import gamingBg from "@/assets/gaming-bg.jpg";
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Copy, Plus, Gamepad2 } from 'lucide-react';
+import { toast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
+import { ThemeToggle } from '@/components/ThemeToggle';
+import { YouTubeStats } from '@/components/YouTubeStats';
+import gamingBg from '@/assets/gaming-bg.jpg';
 
 const Index = () => {
   const navigate = useNavigate();
-  const [loading, setLoading] = useState(false); // لتحديد حالة التحميل
+  const [roomLink, setRoomLink] = useState<string>('');
 
-  // توليد رمز الغرفة
   const generateRoomCode = () => {
-    const chars = "abcdefghijklmnopqrstuvwxyz0123456789";
-    let result = "ttt-";
+    const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+    let result = 'rps-';
     for (let i = 0; i < 5; i++) {
       result += chars.charAt(Math.floor(Math.random() * chars.length));
     }
     return result;
   };
 
-  // إنشاء غرفة جديدة
   const createNewGame = async () => {
     const roomCode = generateRoomCode();
-    setLoading(true); // تفعيل التحميل أثناء إنشاء الغرفة
-
+    
     try {
       const { error } = await supabase
-        .from("tic_tac_toe_rooms")
+        .from('game_rooms')
         .insert({
           id: roomCode,
-          board: JSON.stringify(Array(9).fill("")),
-          current_player: "X",
-          winner: null,
-          player1_name: "مضيف XO",
+          player1_name: "مضيف الغرفة",
+          game_status: 'waiting'
         });
 
       if (error) {
         toast({
           title: "❌ خطأ في إنشاء الغرفة",
           description: "حاول مرة أخرى",
-          variant: "destructive",
+          variant: "destructive"
         });
-        setLoading(false);
         return;
       }
 
-      // بعد إنشاء الغرفة بنجاح، يتم التوجيه إلى صفحة إكس-أو مع رمز الغرفة
-      navigate(`/tic-tac-toe?r=${roomCode}&host=true`);
+      navigate(`/play?r=${roomCode}&host=true`);
     } catch (error) {
       toast({
         title: "❌ خطأ في الاتصال",
         description: "تأكد من اتصالك بالإنترنت",
-        variant: "destructive",
+        variant: "destructive"
       });
-      setLoading(false);
     }
   };
 
   return (
-    <div
-      className="min-h-screen relative flex items-center justify-center p-4"
+    <div 
+      className="min-h-screen relative flex items-center justify-center p-4" 
       dir="rtl"
       style={{
         backgroundImage: `url(${gamingBg})`,
-        backgroundSize: "cover",
-        backgroundPosition: "center",
-        backgroundRepeat: "no-repeat",
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundRepeat: 'no-repeat'
       }}
     >
       <div className="absolute inset-0 bg-black/40 dark:bg-black/60"></div>
-
+      
       <div className="relative z-10 w-full max-w-md space-y-6">
         <div className="flex justify-between items-center">
           <div className="text-sm text-white/90">
-            <p>
-              💻 مبرمج من قبل: <span className="font-semibold text-blue-300">شاورما جيمر</span>
-            </p>
-            <p>
-              🎮 مخصص لـ: <span className="font-semibold text-purple-300">اكس دريم</span>
-            </p>
+            <p>💻 مبرمج من قبل: <span className="font-semibold text-blue-300">شاورما جيمر</span></p>
+            <p>🎮 مخصص لـ: <span className="font-semibold text-purple-300">اكس دريم</span></p>
           </div>
           <ThemeToggle />
         </div>
@@ -104,12 +92,12 @@ const Index = () => {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Button
-              onClick={createNewGame}
+            <Button 
+              onClick={createNewGame} 
               className="w-full text-lg py-6 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-0 shadow-lg hover:shadow-xl transition-all duration-300"
-              disabled={loading} // تعطيل الزر أثناء التحميل
             >
-              {loading ? "جارٍ إنشاء الغرفة..." : "🆕 إنشاء لعبة جديدة"}
+              <Plus className="ml-2 h-5 w-5" />
+              🆕 إنشاء لعبة جديدة
             </Button>
           </CardContent>
         </Card>
@@ -123,7 +111,7 @@ const Index = () => {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Button
+            <Button 
               onClick={() => navigate('/tic-tac-toe')}
               className="w-full text-lg py-6 bg-gradient-to-r from-green-600 to-teal-600 hover:from-green-700 hover:to-teal-700 text-white border-0 shadow-lg hover:shadow-xl transition-all duration-300"
             >
