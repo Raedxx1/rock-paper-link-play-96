@@ -39,7 +39,7 @@ const Home = () => {
         }).single();  // تأكد من إدخال صف واحد فقط
 
       if (error) {
-        console.error('Error creating room:', error.message);  // طباعة الأخطاء في الكونسول للمراجعة
+        console.error('Error creating room:', error.message);
         toast({
           title: '❌ خطأ في إنشاء الغرفة',
           description: `تفاصيل الخطأ: ${error.message}`,
@@ -49,12 +49,12 @@ const Home = () => {
         return;
       }
 
-      // إذا تم إنشاء الغرفة بنجاح، توجيه المستخدم إلى صفحة اللعبة
+      // التوجيه إلى صفحة اللعبة مع رمز الغرفة
       const roomLink = `/tic-tac-toe?r=${roomCode}&host=true`;
       console.log('تم إنشاء الغرفة بنجاح، التوجيه إلى: ', roomLink);
-      navigate(roomLink);  // توجيه المستخدم إلى صفحة اللعبة مع الرابط الجديد
+      navigate(roomLink);  // التوجيه إلى صفحة اللعبة مع الرابط الجديد
     } catch (error) {
-      console.error('Error in connection:', error);  // طباعة الأخطاء في الكونسول
+      console.error('Error in connection:', error);
       toast({
         title: '❌ خطأ في الاتصال',
         description: 'تأكد من اتصالك بالإنترنت',
