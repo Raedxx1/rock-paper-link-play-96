@@ -61,6 +61,57 @@ const TicTacToeRoom = () => {
     fetchRoomData();  // جلب البيانات عند تحميل الصفحة
   }, [roomCode]);
 
+  // دالة إعادة تعيين الجولة
+  const resetRound = async () => {
+    if (!roomCode) return;
+
+    const { error } = await supabase
+      .from('tic_tac_toe_rooms')
+      .update({
+        player1_choice: null,
+        player2_choice: null,
+        round_winner: null,
+        current_round: (room?.current_round || 1) + 1,
+        game_status: 'playing'
+      })
+      .eq('id', roomCode);
+
+    if (error) {
+      toast({
+        title: "❌ خطأ في إعادة الجولة",
+        description: "حاول مرة أخرى",
+        variant: 'destructive'
+      });
+    }
+  };
+
+  // دالة إعادة تعيين اللعبة
+  const resetGame = async () => {
+    if (!roomCode) return;
+
+    const { error } = await supabase
+      .from('tic_tac_toe_rooms')
+      .update({
+        player1_choice: null,
+        player2_choice: null,
+        player1_score: 0,
+        player2_score: 0,
+        current_round: 1,
+        round_winner: null,
+        winner: null,
+        game_status: 'playing'
+      })
+      .eq('id', roomCode);
+
+    if (error) {
+      toast({
+        title: "❌ خطأ في إعادة اللعبة",
+        description: "حاول مرة أخرى",
+        variant: 'destructive'
+      });
+    }
+  };
+
   if (loading) {
     return <div className="min-h-screen flex items-center justify-center">⏳ جارٍ التحميل...</div>;
   }
