@@ -1,41 +1,25 @@
-import { useState, useEffect, useMemo } from "react"; // تأكد من استيراد useMemo هنا
+import { useState, useEffect, useMemo } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Copy, RotateCcw, Share2, UserPlus } from "lucide-react";
+import { Copy, RotateCcw, UserPlus } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { ThemeToggle } from "@/components/ThemeToggle";
 
-// تعريف الأنواع
-type Mark = "X" | "O" | "";
-type Winner = "X" | "O" | "tie" | null;
-
-interface GameRoom {
-  id: string;
-  game_type: "tic_tac_toe";
-  board: string; // JSON string
-  current_player: "X" | "O";
-  winner: Winner;
-  player1_name: string | null;
-  player2_name: string | null;
-  player2_session_id: string | null;
-  player1_choice: string | null;
-  player2_choice: string | null;
-  player1_score: number;
-  player2_score: number;
-  current_round: number;
-  game_status: "waiting" | "playing" | "round_complete" | "game_complete";
-  round_winner: Winner;
-  created_at: string;
-}
-
-// تعريف اللوحة الفارغة
-const emptyBoardJson = JSON.stringify(["", "", "", "", "", "", "", "", ""]);
+// توليد كود غرفة فريد
+const generateRoomCode = () => {
+  const chars = "abcdefghijklmnopqrstuvwxyz0123456789";
+  let result = "ttt-";
+  for (let i = 0; i < 5; i++) {
+    result += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return result;
+};
 
 // التحقق من الفائز
-function checkWinner(board: Mark[]): Winner {
+function checkWinner(board: string[]): string | null {
   const lines = [
     [0, 1, 2], [3, 4, 5], [6, 7, 8], // rows
     [0, 3, 6], [1, 4, 7], [2, 5, 8], // cols
@@ -43,13 +27,76 @@ function checkWinner(board: Mark[]): Winner {
   ];
 
   for (const [a, b, c] of lines) {
-    if (board[a] && board[a] === board[b] && board[a] === board[c]) return board[a] as Winner;
+    if (board[a] && board[a] === board[b] && board[a] === board[c]) return board[a];
   }
-
-  if (board.every(cell => cell)) return "tie"; // إذا امتلأت الخلايا كلها
+  if (board.every(cell => cell)) return "tie"; // If all cells are filled
 
   return null;
 }
+
+const Home = () => {
+  const navigate = useNavigate();
+  const [roomCode, setRoomCode] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  // إنشاء غرفة جديدة
+  const createNewGame = async () => {
+    const code = generateRoomCode();
+    setLoading(true);
+
+    try {
+      const { error } = await supabase
+        .from("tic_tac_toe_rooms")
+        .insert({
+          id: code,
+          board: JSON.stringify(Array(9).fill("")),
+          current_player: "X",
+          winner: null,
+          player1_name: "مضيف XO",
+        });
+
+      if (error) {
+        toast({
+          title: "❌ خطأ في إنشاء الغرفة",
+          description: "حاول مرة أخرى",
+          variant: "destructive",
+        });
+        setLoading(false);
+        return;
+      }
+
+      navigate(`/tic-tac-toe?r=${code}&host=true`);
+    } catch (error) {
+      toast({
+        title: "❌ خطأ في الاتصال",
+        description: "تأكد من اتصالك بالإنترنت",
+        variant: "destructive",
+      });
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen flex items-center justify-center p-4" dir="rtl">
+      <div className="w-full max-w-md space-y-6">
+        <Card>
+          <CardHeader className="text-center">
+            <CardTitle>إكس-أو</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Button
+              onClick={createNewGame}
+              className="w-full py-6 text-lg bg-gradient-to-r from-blue-600 to-purple-600 text-white border-0 shadow-lg"
+              disabled={loading}
+            >
+              {loading ? "جارٍ إنشاء الغرفة..." : "إنشاء غرفة جديدة"}
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+};
 
 const TicTacToeRoom = () => {
   const [searchParams] = useSearchParams();
@@ -59,32 +106,27 @@ const TicTacToeRoom = () => {
 
   const [sessionId] = useState(() => `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`);
   const [playerName, setPlayerName] = useState("");
-  const [roomData, setRoomData] = useState<GameRoom | null>(null);
+  const [room, setRoom] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
-  // استخدام useMemo لحفظ بيانات اللوحة
-  const board: Mark[] = useMemo(() => roomData ? JSON.parse(roomData.board) : Array(9).fill(""), [roomData]);
+  const board = useMemo(() => room ? JSON.parse(room.board) : Array(9).fill(""), [room]);
 
+  // جلب بيانات الغرفة
   const fetchRoomData = async () => {
     if (!roomCode) return;
-
+    setLoading(true);
     const { data, error } = await supabase
-      .from("game_rooms")
+      .from("tic_tac_toe_rooms")
       .select("*")
       .eq("id", roomCode)
       .single();
 
-    if (error) {
-      toast({
-        title: "❌ الغرفة غير موجودة",
-        description: "تأكد من صحة الرابط",
-        variant: "destructive",
-      });
-      navigate("/");
+    if (error || !data) {
+      toast({ title: "❌ الغرفة غير موجودة", description: "تأكد من الرابط", variant: "destructive" });
+      setLoading(false);
       return;
     }
-
-    setRoomData(data as GameRoom);
+    setRoom(data);
     setLoading(false);
   };
 
@@ -93,82 +135,60 @@ const TicTacToeRoom = () => {
     fetchRoomData();
 
     const subscription = supabase
-      .channel(`game_room_changes`)
+      .channel(`ttt-${roomCode}`)
       .on("postgres_changes", {
         event: "*",
         schema: "public",
-        table: "game_rooms",
+        table: "tic_tac_toe_rooms",
         filter: `id=eq.${roomCode}`,
       }, (payload) => {
-        setRoomData(payload.new as GameRoom);
+        setRoom(payload.new);
       })
       .subscribe();
 
     return () => {
       supabase.removeChannel(subscription);
     };
-  }, [roomCode, navigate]);
+  }, [roomCode]);
 
+  // انضمام كلاعب 2
   const joinAsPlayer2 = async () => {
-    if (!playerName.trim() || !roomCode) return;
+    if (!roomCode || !playerName.trim()) return;
 
-    const { data: updateResult, error } = await supabase
-      .from("game_rooms")
-      .update({
-        player2_name: playerName.trim(),
-        player2_session_id: sessionId,
-        game_status: "playing",
-      })
-      .eq("id", roomCode)
-      .is("player2_name", null)
-      .select();
+    const { error } = await supabase
+      .from("tic_tac_toe_rooms")
+      .update({ player2_name: playerName.trim(), player2_session_id: sessionId })
+      .eq("id", roomCode);
 
-    if (error || !updateResult || updateResult.length === 0) {
-      toast({
-        title: "❌ الغرفة ممتلئة",
-        description: "لقد انضم لاعب آخر بالفعل",
-        variant: "destructive",
-      });
-      fetchRoomData();
+    if (error) {
+      toast({ title: "❌ فشل الانضمام", description: "حاول مرة أخرى", variant: "destructive" });
       return;
     }
-
-    toast({
-      title: "✅ تم الانضمام بنجاح!",
-      description: "مرحباً بك في اللعبة",
-    });
+    toast({ title: "✅ تم الانضمام بنجاح!", description: "مرحباً بك في اللعبة" });
   };
 
-  const makeChoice = async (index: number) => {
-    if (!roomData || !roomCode) return;
-
-    const { current_player } = roomData;
-
-    if (roomData.winner) return; // Game is over
-    if (current_player !== (isHost ? "X" : "O")) return; // Not your turn
+  // تنفيذ الحركة
+  const playAt = async (index: number) => {
+    if (!room || room.winner || room.current_player !== (isHost ? "X" : "O")) return;
 
     const newBoard = [...board];
-    if (newBoard[index]) return; // Cell is already taken
+    if (newBoard[index]) return;
 
-    newBoard[index] = current_player;
+    newBoard[index] = room.current_player;
     const winner = checkWinner(newBoard);
+    const nextPlayer = room.current_player === "X" ? "O" : "X";
 
-    const nextPlayer = current_player === "X" ? "O" : "X";
     const { error } = await supabase
-      .from("game_rooms")
+      .from("tic_tac_toe_rooms")
       .update({
         board: JSON.stringify(newBoard),
-        current_player: winner ? current_player : nextPlayer,
+        current_player: winner ? room.current_player : nextPlayer,
         winner,
       })
       .eq("id", roomCode);
 
     if (error) {
-      toast({
-        title: "❌ فشل حفظ الحركة",
-        description: "حاول مجددًا",
-        variant: "destructive",
-      });
+      toast({ title: "❌ فشل حفظ الحركة", description: "حاول مجدداً", variant: "destructive" });
     }
   };
 
@@ -176,20 +196,12 @@ const TicTacToeRoom = () => {
     if (!roomCode) return;
 
     const { error } = await supabase
-      .from("game_rooms")
-      .update({
-        board: emptyBoardJson,
-        current_player: "X",
-        winner: null,
-      })
+      .from("tic_tac_toe_rooms")
+      .update({ board: JSON.stringify(Array(9).fill("")), current_player: "X", winner: null })
       .eq("id", roomCode);
 
     if (error) {
-      toast({
-        title: "❌ فشل في إعادة الجولة",
-        description: "حاول مجددًا",
-        variant: "destructive",
-      });
+      toast({ title: "❌ فشل في إعادة الجولة", description: "حاول مجدداً", variant: "destructive" });
     }
   };
 
@@ -197,24 +209,12 @@ const TicTacToeRoom = () => {
     if (!roomCode) return;
 
     const { error } = await supabase
-      .from("game_rooms")
-      .update({
-        board: emptyBoardJson,
-        player1_score: 0,
-        player2_score: 0,
-        current_round: 1,
-        round_winner: null,
-        winner: null,
-        game_status: "playing",
-      })
+      .from("tic_tac_toe_rooms")
+      .update({ board: JSON.stringify(Array(9).fill("")), player1_score: 0, player2_score: 0, current_round: 1, winner: null })
       .eq("id", roomCode);
 
     if (error) {
-      toast({
-        title: "❌ فشل في إعادة اللعبة",
-        description: "حاول مجددًا",
-        variant: "destructive",
-      });
+      toast({ title: "❌ فشل في إعادة اللعبة", description: "حاول مجدداً", variant: "destructive" });
     }
   };
 
@@ -222,16 +222,9 @@ const TicTacToeRoom = () => {
     const link = `${window.location.origin}/tic-tac-toe?r=${roomCode}`;
     try {
       await navigator.clipboard.writeText(link);
-      toast({
-        title: "✅ تم نسخ الرابط!",
-        description: "شارك الرابط مع صديقك",
-      });
-    } catch (err) {
-      toast({
-        title: "❌ فشل في نسخ الرابط",
-        description: "حاول نسخه يدوياً",
-        variant: "destructive",
-      });
+      toast({ title: "✅ تم نسخ الرابط", description: "أرسله لصديقك للانضمام" });
+    } catch {
+      toast({ title: "❌ فشل النسخ", description: "انسخه يدوياً", variant: "destructive" });
     }
   };
 
@@ -242,7 +235,7 @@ const TicTacToeRoom = () => {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center" dir="rtl">
-        <div>⏳ جارٍ تحميل الغرفة...</div>
+        <div>⏳ جارٍ التحميل...</div>
       </div>
     );
   }
@@ -255,14 +248,13 @@ const TicTacToeRoom = () => {
           <ThemeToggle />
         </div>
 
-        {/* لوح اللعب */}
         <Card>
           <CardContent>
             <div className="grid grid-cols-3 gap-2">
               {board.map((cell, i) => (
                 <button
                   key={i}
-                  onClick={() => makeChoice(i)}
+                  onClick={() => playAt(i)}
                   className="h-20 rounded-xl border bg-gray-700 text-3xl font-bold flex items-center justify-center"
                 >
                   {cell}
@@ -272,7 +264,6 @@ const TicTacToeRoom = () => {
           </CardContent>
         </Card>
 
-        {/* الزر لإعادة اللعبة أو الجولة */}
         <div className="flex gap-2">
           <Button className="w-full" onClick={resetGame}>
             <RotateCcw className="h-4 w-4" /> إعادة اللعبة
