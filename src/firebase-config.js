@@ -1,7 +1,8 @@
+// firebase-config.js
 import { initializeApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
 
-// إعداد Firebase باستخدام API Key الخاص بك
+// إعدادات Firebase الخاصة بك
 const firebaseConfig = {
   apiKey: "AIzaSyBrXrf_tHxB7tg1ScmrhYIphP0I2p7BLlc",
   authDomain: "rock-paper-scissors-xo-game.firebaseapp.com",
@@ -12,10 +13,10 @@ const firebaseConfig = {
   measurementId: "G-VLJBYZZ2BR"
 };
 
-// تهيئة Firebase
+// تهيئة التطبيق Firebase
 const app = initializeApp(firebaseConfig);
 
-// إعداد Firestore
+// إعداد Firestore (قاعدة البيانات)
 const db = getFirestore(app);
 
 export { db };
