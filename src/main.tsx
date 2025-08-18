@@ -6,26 +6,26 @@ import { Toaster } from '@/components/ui/toaster';
 import { ThemeProvider } from '@/components/ThemeProvider';
 import './index.css';
 
-import Index from './pages/Index';      // هذه قائمتك الرئيسية الحالية
+import Index from './pages/Index';      // الصفحة الرئيسية
 import NotFound from './pages/NotFound';
 import GameRoom from './pages/GameRoom'; // حجرة ورقة مقص
-import TicTacToeRoom from './pages/TicTacToeRoom'; // 🔥 صفحة XO الجديدة
+import TicTacToeRoom from './pages/TicTacToeRoom'; // صفحة XO الجديدة
 
 const queryClient = new QueryClient();
 
 const router = createBrowserRouter([
   {
     path: '/',
-    element: <Index />, // نخلي صفحتك Index هي الهوم
+    element: <Index />, // الصفحة الرئيسية
     errorElement: <NotFound />,
   },
   {
     path: '/play',
-    element: <GameRoom />, // حجرة ورقة مقص (زي ما هو)
+    element: <GameRoom />, // حجرة ورقة مقص
   },
   {
     path: '/tic-tac-toe',
-    element: <TicTacToeRoom />, // ❌⭕ XO
+    element: <TicTacToeRoom />, // XO
   },
 ]);
 
