@@ -138,34 +138,39 @@ const TicTacToeRoom = () => {
 
   return (
     <div className="min-h-screen p-4 flex items-center justify-center" dir="rtl">
-      {/* اللوحة هنا */}
-      <div className="grid grid-cols-3 gap-2">
-        {board.map((cell, index) => (
-          <Button
-            key={index}
-            className="w-full h-20 text-3xl border border-gray-300"
-            style={{ backgroundColor: cell ? (cell === 'X' ? '#FF5733' : '#33FF57') : 'white' }}
-          >
-            {cell}
-          </Button>
-        ))}
-      </div>
-
-      <div className="text-center">
-        <Button onClick={resetRound} className="mx-2 mt-4">
-          إعادة الجولة
-        </Button>
-
-        <Button onClick={resetGame} className="mx-2 mt-4">
-          إعادة اللعبة
-        </Button>
-      </div>
-
-      {room?.winner && (
-        <div className="text-center text-xl font-bold mt-4">
-          {room.winner === 'tie' ? 'تعادل' : `الفائز: ${room.winner}`}
+      <div className="w-full max-w-md space-y-4">
+        <div className="flex items-center justify-between">
+          <Button onClick={() => navigate('/')}>← العودة للرئيسية</Button>
         </div>
-      )}
+
+        <div className="grid grid-cols-3 gap-2">
+          {board.map((cell, index) => (
+            <Button
+              key={index}
+              className="w-full h-20 text-3xl border border-gray-300"
+              style={{ backgroundColor: cell ? (cell === 'X' ? '#FF5733' : '#33FF57') : 'white' }}
+            >
+              {cell}
+            </Button>
+          ))}
+        </div>
+
+        <div className="text-center">
+          <Button onClick={resetRound} className="mx-2 mt-4">
+            إعادة الجولة
+          </Button>
+
+          <Button onClick={resetGame} className="mx-2 mt-4">
+            إعادة اللعبة
+          </Button>
+        </div>
+
+        {room?.winner && (
+          <div className="text-center text-xl font-bold mt-4">
+            {room.winner === 'tie' ? 'تعادل' : `الفائز: ${room.winner}`}
+          </div>
+        )}
+      </div>
     </div>
   );
 };
