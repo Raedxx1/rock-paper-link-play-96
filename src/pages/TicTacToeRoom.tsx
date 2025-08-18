@@ -1,10 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
-import { Button } from '@/components/ui/button';
-import { RotateCcw } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
-import { ThemeToggle } from '@/components/ThemeToggle';
 
 // التحقق من الفائز
 function checkWinner(board: string[]): string | null {
@@ -25,8 +22,8 @@ function checkWinner(board: string[]): string | null {
 const TicTacToeRoom = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const roomCode = searchParams.get('r');
-  const isHost = searchParams.get('host') === 'true';
+  const roomCode = searchParams.get('r');  // الحصول على رمز الغرفة من الرابط
+  const isHost = searchParams.get('host') === 'true';  // التأكد إذا كنت المضيف
 
   const [room, setRoom] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -34,7 +31,14 @@ const TicTacToeRoom = () => {
 
   useEffect(() => {
     const fetchRoomData = async () => {
-      if (!roomCode) return;
+      if (!roomCode) {
+        toast({
+          title: '❌ خطأ في الرابط',
+          description: 'رمز الغرفة غير موجود',
+          variant: 'destructive',
+        });
+        return;
+      }
 
       setLoading(true);
       const { data, error } = await supabase
@@ -59,74 +63,6 @@ const TicTacToeRoom = () => {
     if (roomCode) fetchRoomData();
   }, [roomCode]);
 
-  const playAt = async (index: number) => {
-    if (!room || room.winner || room.current_player !== (isHost ? 'X' : 'O')) return;
-
-    const newBoard = [...board];
-    if (newBoard[index]) return;
-
-    newBoard[index] = room.current_player;
-    const winner = checkWinner(newBoard);
-    const nextPlayer = room.current_player === 'X' ? 'O' : 'X';
-
-    const { error } = await supabase
-      .from('tic_tac_toe_rooms')
-      .update({
-        board: JSON.stringify(newBoard),
-        current_player: winner ? room.current_player : nextPlayer,
-        winner,
-      })
-      .eq('id', roomCode);
-
-    if (error) {
-      toast({
-        title: '❌ فشل حفظ الحركة',
-        description: 'حاول مجدداً',
-        variant: 'destructive',
-      });
-    }
-  };
-
-  const resetRound = async () => {
-    if (!roomCode) return;
-
-    const { error } = await supabase
-      .from('tic_tac_toe_rooms')
-      .update({ board: JSON.stringify(Array(9).fill('')), current_player: 'X', winner: null })
-      .eq('id', roomCode);
-
-    if (error) {
-      toast({
-        title: '❌ فشل في إعادة الجولة',
-        description: 'حاول مجدداً',
-        variant: 'destructive',
-      });
-    }
-  };
-
-  const resetGame = async () => {
-    if (!roomCode) return;
-
-    const { error } = await supabase
-      .from('tic_tac_toe_rooms')
-      .update({
-        board: JSON.stringify(Array(9).fill('')),
-        player1_score: 0,
-        player2_score: 0,
-        current_round: 1,
-        winner: null,
-      })
-      .eq('id', roomCode);
-
-    if (error) {
-      toast({
-        title: '❌ فشل في إعادة اللعبة',
-        description: 'حاول مجدداً',
-        variant: 'destructive',
-      });
-    }
-  };
-
   if (loading) {
     return <div className="min-h-screen flex items-center justify-center">⏳ جارٍ التحميل...</div>;
   }
@@ -147,7 +83,7 @@ const TicTacToeRoom = () => {
           {board.map((cell, index) => (
             <Button
               key={index}
-              onClick={() => playAt(index)}
+              onClick={() => playAt(index)} // هنا يمكن استدعاء دالة اللعب
               className="w-full h-20 text-3xl border border-gray-300"
               style={{ backgroundColor: cell ? (cell === 'X' ? '#FF5733' : '#33FF57') : 'white' }}
             >
