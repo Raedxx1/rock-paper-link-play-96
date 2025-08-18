@@ -11,19 +11,12 @@ export default defineConfig(({ mode }) => ({
   },
   plugins: [
     react(),
-    mode === "development" && componentTagger(),
+    mode === 'development' &&
+    componentTagger(),
   ].filter(Boolean),
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
-    },
-  },
-  optimizeDeps: {
-    include: ['firebase'] // إضافة Firebase هنا لتجنب مشاكل التحميل
-  },
-  build: {
-    rollupOptions: {
-      external: ['firebase'], // جعل Firebase خارجيًا إذا كان يستخدم مع Vite
     },
   },
 }));

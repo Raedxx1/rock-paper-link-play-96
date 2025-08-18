@@ -1,9 +1,8 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
-import { db } from '@/firebase-config'; // استيراد إعدادات Firebase
-import { setDoc, doc } from 'firebase/firestore';
 
 // توليد رمز غرفة فريد
 const generateRoomCode = () => {
@@ -25,14 +24,26 @@ const Home = () => {
     setLoading(true);
 
     try {
-      // إنشاء غرفة جديدة في Firebase
-      await setDoc(doc(db, 'tic_tac_toe_rooms', roomCode), {
-        board: JSON.stringify(Array(9).fill('')), // مصفوفة فارغة للوحة
-        current_player: 'X',  // اللاعب الأول
-        winner: null,  // لا يوجد فائز بعد
-        game_status: 'waiting',  // حالة اللعبة
-        player1_name: "مضيف XO",  // اسم اللاعب الأول
-      });
+      const { data, error } = await supabase
+        .from('tic_tac_toe_rooms')
+        .insert({
+          id: roomCode,
+          board: JSON.stringify(Array(9).fill('')), // مصفوفة فارغة للوحة
+          current_player: 'X',  // اللاعب الأول
+          winner: null,  // لا يوجد فائز بعد
+          game_status: 'waiting',  // حالة اللعبة
+          player1_name: "مضيف XO",  // اسم اللاعب الأول
+        });
+
+      if (error) {
+        toast({
+          title: "❌ خطأ في إنشاء الغرفة",
+          description: `تفاصيل الخطأ: ${error.message}`,
+          variant: 'destructive',
+        });
+        setLoading(false);
+        return;
+      }
 
       // بعد إنشاء الغرفة بنجاح، قم بتوجيه المستخدم إلى صفحة اللعبة مع رمز الغرفة
       const roomLink = `/tic-tac-toe?r=${roomCode}&host=true`;
