@@ -112,7 +112,7 @@ const Index = () => {
           </CardHeader>
           <CardContent>
             <Button 
-              onClick={() => navigate('/tic-tac-toe')}
+              onClick={() => navigate('/tic-tac-toe')}  {/* تعديل هنا: الرابط يجب أن يقود إلى لعبة إكس أو */}
               className="w-full text-lg py-6 bg-gradient-to-r from-green-600 to-teal-600 hover:from-green-700 hover:to-teal-700 text-white border-0 shadow-lg hover:shadow-xl transition-all duration-300"
             >
               <Gamepad2 className="ml-2 h-5 w-5" />
