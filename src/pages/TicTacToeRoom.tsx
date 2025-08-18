@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react"; // تأكد من استيراد useMemo هنا
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,6 +8,7 @@ import { Copy, RotateCcw, Share2, UserPlus } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { ThemeToggle } from "@/components/ThemeToggle";
 
+// تعريف الأنواع
 type Mark = "X" | "O" | "";
 type Winner = "X" | "O" | "tie" | null;
 
@@ -30,8 +31,10 @@ interface GameRoom {
   created_at: string;
 }
 
+// تعريف اللوحة الفارغة
 const emptyBoardJson = JSON.stringify(["", "", "", "", "", "", "", "", ""]);
 
+// التحقق من الفائز
 function checkWinner(board: Mark[]): Winner {
   const lines = [
     [0, 1, 2], [3, 4, 5], [6, 7, 8], // rows
@@ -43,7 +46,7 @@ function checkWinner(board: Mark[]): Winner {
     if (board[a] && board[a] === board[b] && board[a] === board[c]) return board[a] as Winner;
   }
 
-  if (board.every(cell => cell)) return "tie"; // If board is full and no winner, it's a tie.
+  if (board.every(cell => cell)) return "tie"; // إذا امتلأت الخلايا كلها
 
   return null;
 }
@@ -59,6 +62,7 @@ const TicTacToeRoom = () => {
   const [roomData, setRoomData] = useState<GameRoom | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // استخدام useMemo لحفظ بيانات اللوحة
   const board: Mark[] = useMemo(() => roomData ? JSON.parse(roomData.board) : Array(9).fill(""), [roomData]);
 
   const fetchRoomData = async () => {
@@ -239,14 +243,6 @@ const TicTacToeRoom = () => {
     return (
       <div className="min-h-screen flex items-center justify-center" dir="rtl">
         <div>⏳ جارٍ تحميل الغرفة...</div>
-      </div>
-    );
-  }
-
-  if (!roomData) {
-    return (
-      <div className="min-h-screen flex items-center justify-center" dir="rtl">
-        <div>❌ الغرفة غير موجودة</div>
       </div>
     );
   }
