@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { useSearchParams, useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/hooks/use-toast';
@@ -19,6 +19,16 @@ function checkWinner(board: string[]): string | null {
 
   return null;
 }
+
+// توليد رمز غرفة فريد
+const generateRoomCode = () => {
+  const chars = "abcdefghijklmnopqrstuvwxyz0123456789";
+  let result = "ttt-";
+  for (let i = 0; i < 5; i++) {
+    result += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return result;
+};
 
 const TicTacToeRoom = () => {
   const [searchParams] = useSearchParams();
@@ -62,7 +72,7 @@ const TicTacToeRoom = () => {
         }
 
         setRoom(data);
-        setLoading(false);
+        setLoading(false); // بعد تحميل البيانات، نقوم بتغيير حالة التحميل
       } catch (error) {
         console.error('Error fetching room data:', error);
         toast({
@@ -138,43 +148,36 @@ const TicTacToeRoom = () => {
 
   return (
     <div className="min-h-screen p-4 flex items-center justify-center" dir="rtl">
-      <div className="w-full max-w-md space-y-4">
-        <div className="flex items-center justify-between">
-          <Button onClick={() => navigate('/')}>← العودة للرئيسية</Button>
-        </div>
-
-        <div className="grid grid-cols-3 gap-2">
-          {board.map((cell, index) => (
-            <Button
-              key={index}
-              onClick={() => playAt(index)} // هنا يمكن استدعاء دالة اللعب
-              className="w-full h-20 text-3xl border border-gray-300"
-              style={{ backgroundColor: cell ? (cell === 'X' ? '#FF5733' : '#33FF57') : 'white' }}
-            >
-              {cell}
-            </Button>
-          ))}
-        </div>
-
-        <div className="text-center">
-          <Button onClick={resetRound} className="mx-2 mt-4">
-            إعادة الجولة
+      {/* اللوحة هنا */}
+      <div className="grid grid-cols-3 gap-2">
+        {board.map((cell, index) => (
+          <Button
+            key={index}
+            className="w-full h-20 text-3xl border border-gray-300"
+            style={{ backgroundColor: cell ? (cell === 'X' ? '#FF5733' : '#33FF57') : 'white' }}
+          >
+            {cell}
           </Button>
-
-          <Button onClick={resetGame} className="mx-2 mt-4">
-            إعادة اللعبة
-          </Button>
-        </div>
-
-        {room?.winner && (
-          <div className="text-center text-xl font-bold mt-4">
-            {room.winner === 'tie' ? 'تعادل' : `الفائز: ${room.winner}`}
-          </div>
-        )}
+        ))}
       </div>
+
+      <div className="text-center">
+        <Button onClick={resetRound} className="mx-2 mt-4">
+          إعادة الجولة
+        </Button>
+
+        <Button onClick={resetGame} className="mx-2 mt-4">
+          إعادة اللعبة
+        </Button>
+      </div>
+
+      {room?.winner && (
+        <div className="text-center text-xl font-bold mt-4">
+          {room.winner === 'tie' ? 'تعادل' : `الفائز: ${room.winner}`}
+        </div>
+      )}
     </div>
   );
 };
 
 export default TicTacToeRoom;
- 
