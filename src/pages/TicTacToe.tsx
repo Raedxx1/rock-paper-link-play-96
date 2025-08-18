@@ -1,91 +1,117 @@
-// src/pages/TicTacToeRoom.tsx
-import { useEffect, useState } from "react";
-import { useSearchParams } from "react-router-dom";
-import { supabase } from "@/supabaseClient";
-import { toast } from "@/components/ui/use-toast";
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from '@/hooks/use-toast';
+import { ThemeToggle } from '@/components/ThemeToggle';
+import gamingBg from '@/assets/gaming-bg.jpg';
 
-export default function TicTacToeRoom() {
-  const [searchParams] = useSearchParams();
-  const roomId = searchParams.get("r");
-  const isHost = searchParams.get("host") === "true";
+// توليد رمز غرفة فريد
+const generateRoomCode = (gameType: string) => {
+  const chars = "abcdefghijklmnopqrstuvwxyz0123456789";
+  let result = `${gameType}-`;
+  for (let i = 0; i < 5; i++) {
+    result += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return result;
+};
 
-  const [board, setBoard] = useState(Array(9).fill(""));
-  const [currentTurn, setCurrentTurn] = useState("X");
+const Home = () => {
+  const navigate = useNavigate();
+  const [loading, setLoading] = useState(false);
 
-  // 📡 جلب حالة الغرفة
-  useEffect(() => {
-    if (!roomId) return;
+  // إنشاء غرفة جديدة
+  const createNewGame = async (gameType: string) => {
+    const roomCode = generateRoomCode(gameType); // توليد رمز فريد للغرفة
+    setLoading(true);
 
-    const fetchRoom = async () => {
+    try {
       const { data, error } = await supabase
-        .from("tic_tac_toe_rooms")
-        .select("*")
-        .eq("id", roomId)
-        .single();
+        .from(`${gameType}_rooms`)  // استخدام النوع لتحديد الجدول المناسب
+        .insert({
+          id: roomCode,
+          board: JSON.stringify(Array(9).fill('')), // مصفوفة فارغة للوحة (إذا كانت إكس-أو)
+          current_player: 'X',  // اللاعب الأول
+          winner: null,  // لا يوجد فائز بعد
+          game_status: 'waiting',  // حالة اللعبة
+          player1_name: "مضيف اللعبة",  // اسم اللاعب الأول
+        });
 
       if (error) {
         toast({
-          title: "خطأ",
-          description: error.message,
-          variant: "destructive",
+          title: "❌ خطأ في إنشاء الغرفة",
+          description: `تفاصيل الخطأ: ${error.message}`,
+          variant: 'destructive',
         });
+        setLoading(false);
         return;
       }
 
-      if (data?.board) setBoard(data.board);
-    };
-
-    fetchRoom();
-
-    // 👂 الاستماع للتغييرات
-    const channel = supabase
-      .channel("tic-tac-toe")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "tic_tac_toe_rooms", filter: `id=eq.${roomId}` },
-        (payload) => {
-          const newBoard = payload.new.board;
-          if (newBoard) setBoard(newBoard);
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [roomId]);
-
-  // 🎮 عند الضغط على خانة
-  const handleMove = async (index: number) => {
-    if (board[index] !== "") return;
-
-    const newBoard = [...board];
-    newBoard[index] = currentTurn;
-
-    setBoard(newBoard);
-    setCurrentTurn(currentTurn === "X" ? "O" : "X");
-
-    await supabase
-      .from("tic_tac_toe_rooms")
-      .update({ board: newBoard })
-      .eq("id", roomId);
+      // بعد إنشاء الغرفة بنجاح، قم بتوجيه المستخدم إلى صفحة اللعبة مع رمز الغرفة
+      const roomLink = `/${gameType}?r=${roomCode}&host=true`;
+      navigate(roomLink);
+    } catch (error) {
+      console.error('Error in connection:', error);
+      toast({
+        title: "❌ فشل في الاتصال",
+        description: 'تأكد من اتصالك بالإنترنت',
+        variant: 'destructive',
+      });
+      setLoading(false);
+    }
   };
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-gray-800 text-white">
-      <h1 className="text-2xl font-bold mb-6">❌⭕ غرفة XO ({roomId})</h1>
-      <div className="grid grid-cols-3 gap-2">
-        {board.map((cell, i) => (
-          <button
-            key={i}
-            onClick={() => handleMove(i)}
-            className="w-20 h-20 text-3xl flex items-center justify-center bg-gray-700 hover:bg-gray-600 rounded-lg"
+    <div 
+      className="min-h-screen relative flex items-center justify-center p-4"
+      style={{
+        backgroundImage: `url(${gamingBg})`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundRepeat: 'no-repeat'
+      }}
+    >
+      <div className="absolute inset-0 bg-black/40 dark:bg-black/60"></div>
+      
+      <div className="relative z-10 w-full max-w-md space-y-6">
+        <div className="flex justify-between items-center">
+          <ThemeToggle />
+        </div>
+
+        <div className="text-center space-y-2">
+          <h1 className="text-3xl font-bold text-white drop-shadow-lg">🎮 اختر لعبتك</h1>
+          <p className="text-white/90 drop-shadow">العب مع أصدقائك أونلاين!</p>
+        </div>
+
+        {/* كارد حجرة ورقة مقص */}
+        <div className="w-full bg-white/95 dark:bg-black/80 backdrop-blur-sm border-white/20 p-4 rounded-xl shadow-xl">
+          <Button 
+            onClick={() => createNewGame('game')} 
+            disabled={loading}
+            className="w-full text-lg py-6 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-0 shadow-lg hover:shadow-xl transition-all duration-300"
           >
-            {cell}
-          </button>
-        ))}
+            🪨📄✂️ إنشاء لعبة حجرة ورقة مقص
+          </Button>
+        </div>
+
+        {/* كارد لعبة إكس أو */}
+        <div className="w-full bg-white/95 dark:bg-black/80 backdrop-blur-sm border-white/20 p-4 rounded-xl shadow-xl">
+          <Button 
+            onClick={() => createNewGame('tic_tac_toe')} 
+            disabled={loading}
+            className="w-full text-lg py-6 bg-gradient-to-r from-green-600 to-teal-600 hover:from-green-700 hover:to-teal-700 text-white border-0 shadow-lg hover:shadow-xl transition-all duration-300"
+          >
+            ❌⭕ إنشاء لعبة إكس أو
+          </Button>
+        </div>
+
+        <div className="text-center text-xs text-white/70 border-t border-white/20 pt-4 drop-shadow">
+          <p>© 2024 شاورما جيمر - جميع الحقوق محفوظة</p>
+          <p>مطورة خصيصاً لمجتمع اكس دريم</p>
+        </div>
       </div>
-      <p className="mt-4">🎯 الدور الحالي: {currentTurn}</p>
     </div>
   );
-}
+};
+
+export default Home;
