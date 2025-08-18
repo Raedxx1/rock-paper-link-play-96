@@ -26,7 +26,7 @@ const router = createBrowserRouter([
   },
   {
     path: '/tic-tac-toe',
-    element: <Home />, // ❌⭕ XO
+    element: <TicTacToeRoom />, // ❌⭕ XO
   },
 ]);
 
