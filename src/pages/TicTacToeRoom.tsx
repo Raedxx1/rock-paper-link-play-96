@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/hooks/use-toast';
@@ -19,16 +19,6 @@ function checkWinner(board: string[]): string | null {
 
   return null;
 }
-
-// توليد رمز غرفة فريد
-const generateRoomCode = () => {
-  const chars = "abcdefghijklmnopqrstuvwxyz0123456789";
-  let result = "ttt-";
-  for (let i = 0; i < 5; i++) {
-    result += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return result;
-};
 
 const TicTacToeRoom = () => {
   const [searchParams] = useSearchParams();
