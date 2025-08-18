@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,24 +10,23 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 
 type Mark = "X" | "O" | "";
 type Winner = "X" | "O" | "tie" | null;
-type Choice = "rock" | "paper" | "scissors" | null;
 
 interface GameRoom {
   id: string;
-  game_type: "rock_paper_scissors" | "tic_tac_toe"; // تحديد نوع اللعبة
-  board: string; // للـ "إكس-أو" (JSON)
+  game_type: "tic_tac_toe";
+  board: string; // JSON string
   current_player: "X" | "O";
   winner: Winner;
   player1_name: string | null;
   player2_name: string | null;
   player2_session_id: string | null;
-  player1_choice: Choice | null; // للـ "حجرة ورقة مقص"
-  player2_choice: Choice | null; // للـ "حجرة ورقة مقص"
+  player1_choice: string | null;
+  player2_choice: string | null;
   player1_score: number;
   player2_score: number;
   current_round: number;
   game_status: "waiting" | "playing" | "round_complete" | "game_complete";
-  round_winner: "player1" | "player2" | "tie" | null;
+  round_winner: Winner;
   created_at: string;
 }
 
@@ -44,7 +43,7 @@ function checkWinner(board: Mark[]): Winner {
     if (board[a] && board[a] === board[b] && board[a] === board[c]) return board[a] as Winner;
   }
 
-  if (board.every(cell => cell)) return "tie"; // إذا امتلأت الخلايا كلها
+  if (board.every(cell => cell)) return "tie"; // If board is full and no winner, it's a tie.
 
   return null;
 }
@@ -59,8 +58,8 @@ const TicTacToeRoom = () => {
   const [playerName, setPlayerName] = useState("");
   const [roomData, setRoomData] = useState<GameRoom | null>(null);
   const [loading, setLoading] = useState(true);
-  
-  const board: Mark[] = useMemo(() => roomData?.game_type === "tic_tac_toe" ? JSON.parse(roomData.board) : Array(9).fill(""), [roomData]);
+
+  const board: Mark[] = useMemo(() => roomData ? JSON.parse(roomData.board) : Array(9).fill(""), [roomData]);
 
   const fetchRoomData = async () => {
     if (!roomCode) return;
@@ -136,88 +135,38 @@ const TicTacToeRoom = () => {
     });
   };
 
-  const makeChoice = async (choice: Choice) => {
+  const makeChoice = async (index: number) => {
     if (!roomData || !roomCode) return;
 
-    if (!isHost && isPlayer2 && roomData.player2_session_id !== sessionId) {
-      toast({
-        title: "❌ غير مسموح",
-        description: "هذا الحساب مخصص للاعب آخر",
-        variant: "destructive",
-      });
-      fetchRoomData();
-      return;
-    }
+    const { current_player } = roomData;
 
-    const updateField = isHost || !isPlayer2 ? "player1_choice" : "player2_choice";
+    if (roomData.winner) return; // Game is over
+    if (current_player !== (isHost ? "X" : "O")) return; // Not your turn
 
+    const newBoard = [...board];
+    if (newBoard[index]) return; // Cell is already taken
+
+    newBoard[index] = current_player;
+    const winner = checkWinner(newBoard);
+
+    const nextPlayer = current_player === "X" ? "O" : "X";
     const { error } = await supabase
       .from("game_rooms")
-      .update({ [updateField]: choice })
+      .update({
+        board: JSON.stringify(newBoard),
+        current_player: winner ? current_player : nextPlayer,
+        winner,
+      })
       .eq("id", roomCode);
 
     if (error) {
       toast({
-        title: "❌ خطأ في الاختيار",
-        description: "حاول مرة أخرى",
+        title: "❌ فشل حفظ الحركة",
+        description: "حاول مجددًا",
         variant: "destructive",
       });
     }
   };
-
-  const determineRoundWinner = (p1Choice: Choice, p2Choice: Choice): "player1" | "player2" | "tie" => {
-    if (!p1Choice || !p2Choice) return "tie";
-    if (p1Choice === p2Choice) return "tie";
-
-    const winConditions = {
-      rock: "scissors",
-      paper: "rock",
-      scissors: "paper",
-    };
-
-    return winConditions[p1Choice] === p2Choice ? "player1" : "player2";
-  };
-
-  useEffect(() => {
-    if (!roomData || !roomCode) return;
-
-    if (roomData.player1_choice && roomData.player2_choice && roomData.game_status === "playing") {
-      const roundWinner = determineRoundWinner(roomData.player1_choice, roomData.player2_choice);
-
-      let newPlayer1Score = roomData.player1_score;
-      let newPlayer2Score = roomData.player2_score;
-
-      if (roundWinner === "player1") newPlayer1Score++;
-      else if (roundWinner === "player2") newPlayer2Score++;
-
-      const gameWinner = newPlayer1Score >= 3 ? "player1" : newPlayer2Score >= 3 ? "player2" : null;
-
-      const newGameStatus = gameWinner ? "game_complete" : "round_complete";
-
-      const updateRound = async () => {
-        const { error } = await supabase
-          .from("game_rooms")
-          .update({
-            round_winner: roundWinner,
-            player1_score: newPlayer1Score,
-            player2_score: newPlayer2Score,
-            winner: gameWinner,
-            game_status: newGameStatus,
-          })
-          .eq("id", roomCode);
-
-        if (error) {
-          toast({
-            title: "❌ خطأ في حفظ النتيجة",
-            description: "حاول إعادة تحميل الصفحة",
-            variant: "destructive",
-          });
-        }
-      };
-
-      updateRound();
-    }
-  }, [roomData?.player1_choice, roomData?.player2_choice, roomData?.game_status, roomCode]);
 
   const resetRound = async () => {
     if (!roomCode) return;
@@ -225,18 +174,16 @@ const TicTacToeRoom = () => {
     const { error } = await supabase
       .from("game_rooms")
       .update({
-        player1_choice: null,
-        player2_choice: null,
-        round_winner: null,
-        current_round: (roomData?.current_round || 1) + 1,
-        game_status: "playing",
+        board: emptyBoardJson,
+        current_player: "X",
+        winner: null,
       })
       .eq("id", roomCode);
 
     if (error) {
       toast({
-        title: "❌ خطأ في إعادة الجولة",
-        description: "حاول مرة أخرى",
+        title: "❌ فشل في إعادة الجولة",
+        description: "حاول مجددًا",
         variant: "destructive",
       });
     }
@@ -248,8 +195,7 @@ const TicTacToeRoom = () => {
     const { error } = await supabase
       .from("game_rooms")
       .update({
-        player1_choice: null,
-        player2_choice: null,
+        board: emptyBoardJson,
         player1_score: 0,
         player2_score: 0,
         current_round: 1,
@@ -261,15 +207,15 @@ const TicTacToeRoom = () => {
 
     if (error) {
       toast({
-        title: "❌ خطأ في إعادة اللعبة",
-        description: "حاول مرة أخرى",
+        title: "❌ فشل في إعادة اللعبة",
+        description: "حاول مجددًا",
         variant: "destructive",
       });
     }
   };
 
   const shareRoom = async () => {
-    const link = `${window.location.origin}/play?r=${roomCode}`;
+    const link = `${window.location.origin}/tic-tac-toe?r=${roomCode}`;
     try {
       await navigator.clipboard.writeText(link);
       toast({
@@ -297,6 +243,14 @@ const TicTacToeRoom = () => {
     );
   }
 
+  if (!roomData) {
+    return (
+      <div className="min-h-screen flex items-center justify-center" dir="rtl">
+        <div>❌ الغرفة غير موجودة</div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen p-4 flex items-center justify-center" dir="rtl">
       <div className="w-full max-w-md space-y-4">
@@ -305,13 +259,14 @@ const TicTacToeRoom = () => {
           <ThemeToggle />
         </div>
 
+        {/* لوح اللعب */}
         <Card>
           <CardContent>
             <div className="grid grid-cols-3 gap-2">
               {board.map((cell, i) => (
                 <button
                   key={i}
-                  onClick={() => makeChoice(i === 0 ? "rock" : "paper")}
+                  onClick={() => makeChoice(i)}
                   className="h-20 rounded-xl border bg-gray-700 text-3xl font-bold flex items-center justify-center"
                 >
                   {cell}
@@ -320,6 +275,16 @@ const TicTacToeRoom = () => {
             </div>
           </CardContent>
         </Card>
+
+        {/* الزر لإعادة اللعبة أو الجولة */}
+        <div className="flex gap-2">
+          <Button className="w-full" onClick={resetGame}>
+            <RotateCcw className="h-4 w-4" /> إعادة اللعبة
+          </Button>
+          <Button className="w-full" onClick={resetRound}>
+            <RotateCcw className="h-4 w-4" /> إعادة الجولة
+          </Button>
+        </div>
       </div>
     </div>
   );
