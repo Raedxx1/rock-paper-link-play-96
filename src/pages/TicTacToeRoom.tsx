@@ -63,7 +63,7 @@ const TicTacToeRoom = () => {
   const createRoom = async () => {
     const id = generateRoomCode();
     const { error } = await supabase
-      .from("tic_tac_toe_rooms")
+      .from("tic_tac_toe_rooms") // استخدمنا `tic_tac_toe_rooms` هنا
       .insert({
         id,
         board: emptyBoardJson,
@@ -84,7 +84,7 @@ const TicTacToeRoom = () => {
     if (!roomCode) return;
     setLoading(true);
     const { data, error } = await supabase
-      .from("tic_tac_toe_rooms")
+      .from("tic_tac_toe_rooms") // استخدمنا `tic_tac_toe_rooms` هنا
       .select("*")
       .eq("id", roomCode)
       .single();
@@ -108,7 +108,7 @@ const TicTacToeRoom = () => {
       .on("postgres_changes", {
         event: "*",
         schema: "public",
-        table: "tictactoe_rooms",
+        table: "tic_tac_toe_rooms", // استخدمنا `tic_tac_toe_rooms` هنا
         filter: `id=eq.${roomCode}`
       }, (payload) => {
         setRoom(payload.new as TttRoom);
@@ -132,7 +132,7 @@ const TicTacToeRoom = () => {
     }
 
     const { error } = await supabase
-      .from("tic_tac_toe_rooms")
+      .from("tic_tac_toe_rooms") // استخدمنا `tic_tac_toe_rooms` هنا
       .update({
         player2_name: playerName.trim(),
         player2_session_id: sessionId
@@ -169,7 +169,7 @@ const TicTacToeRoom = () => {
     const next = myMark === "X" ? "O" : "X";
 
     const { error } = await supabase
-      .from("tic_tac_toe_rooms")
+      .from("tic_tac_toe_rooms") // استخدمنا `tic_tac_toe_rooms` هنا
       .update({
         board: JSON.stringify(b),
         current_player: w ? room.current_player : next,
@@ -186,7 +186,7 @@ const TicTacToeRoom = () => {
   const resetBoard = async () => {
     if (!roomCode) return;
     const { error } = await supabase
-      .from("tic_tac_toe_rooms")
+      .from("tic_tac_toe_rooms") // استخدمنا `tic_tac_toe_rooms` هنا
       .update({
         board: emptyBoardJson,
         current_player: "X",
@@ -272,4 +272,3 @@ const TicTacToeRoom = () => {
 };
 
 export default TicTacToeRoom;
-      
