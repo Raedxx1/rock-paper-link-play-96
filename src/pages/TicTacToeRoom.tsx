@@ -1,34 +1,17 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
-import { toast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
-import { RotateCcw } from 'lucide-react';
-
-// التحقق من الفائز
-function checkWinner(board: string[]): string | null {
-  const lines = [
-    [0, 1, 2], [3, 4, 5], [6, 7, 8], // rows
-    [0, 3, 6], [1, 4, 7], [2, 5, 8], // cols
-    [0, 4, 8], [2, 4, 6],           // diags
-  ];
-
-  for (const [a, b, c] of lines) {
-    if (board[a] && board[a] === board[b] && board[a] === board[c]) return board[a];
-  }
-  if (board.every(cell => cell)) return "tie"; // If all cells are filled
-
-  return null;
-}
+import { toast } from '@/hooks/use-toast';
 
 const TicTacToeRoom = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const roomCode = searchParams.get('r');  // الحصول على رمز الغرفة من الرابط
-  const isHost = searchParams.get('host') === 'true';  // التأكد إذا كنت المضيف
+  const roomCode = searchParams.get('r'); // الحصول على رمز الغرفة من الرابط
+  const isHost = searchParams.get('host') === 'true'; // التأكد إذا كنت المضيف
 
   const [room, setRoom] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(true); // حالة التحميل
   const board = useMemo(() => room ? JSON.parse(room.board) : Array(9).fill(''), [room]);
 
   // جلب بيانات الغرفة
@@ -52,19 +35,20 @@ const TicTacToeRoom = () => {
           .eq('id', roomCode)
           .single();
 
-        if (error || !data) {
+        if (error) {
           toast({
-            title: '❌ الغرفة غير موجودة',
-            description: 'تأكد من الرابط',
+            title: '❌ فشل في تحميل الغرفة',
+            description: `الخطأ: ${error.message}`,
             variant: 'destructive',
           });
           setLoading(false); // إيقاف التحميل عند فشل الجلب
           return;
         }
+
         setRoom(data);
         setLoading(false);  // بعد تحميل البيانات، نقوم بتغيير حالة التحميل
       } catch (error) {
-        console.error("Error fetching room data: ", error);
+        console.error('Error fetching room data:', error);
         toast({
           title: '❌ خطأ في الاتصال',
           description: 'فشل في تحميل البيانات من السيرفر',
@@ -74,7 +58,7 @@ const TicTacToeRoom = () => {
       }
     };
 
-    if (roomCode) fetchRoomData();
+    fetchRoomData();  // جلب البيانات عند تحميل الصفحة
   }, [roomCode]);
 
   if (loading) {
@@ -90,7 +74,6 @@ const TicTacToeRoom = () => {
       <div className="w-full max-w-md space-y-4">
         <div className="flex items-center justify-between">
           <Button onClick={() => navigate('/')}>← العودة للرئيسية</Button>
-          <ThemeToggle />
         </div>
 
         <div className="grid grid-cols-3 gap-2">
@@ -108,7 +91,6 @@ const TicTacToeRoom = () => {
 
         <div className="text-center">
           <Button onClick={resetRound} className="mx-2 mt-4">
-            <RotateCcw className="w-6 h-6" />
             إعادة الجولة
           </Button>
 
