@@ -84,7 +84,7 @@ const TicTacToeRoom = () => {
     if (!roomCode) return;
     setLoading(true);
     const { data, error } = await supabase
-      .from("tictactoe_rooms")
+      .from("tic_tac_toe_rooms")
       .select("*")
       .eq("id", roomCode)
       .single();
