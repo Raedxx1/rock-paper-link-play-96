@@ -7,8 +7,8 @@ import { toast } from '@/hooks/use-toast';
 const TicTacToeRoom = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const roomCode = searchParams.get('r'); // الحصول على رمز الغرفة من الرابط
-  const isHost = searchParams.get('host') === 'true'; // التأكد إذا كنت المضيف
+  const roomCode = searchParams.get('r');  // الحصول على رمز الغرفة من الرابط
+  const isHost = searchParams.get('host') === 'true';  // التأكد إذا كنت المضيف
 
   const [room, setRoom] = useState<any>(null);
   const [loading, setLoading] = useState(true); // حالة التحميل
