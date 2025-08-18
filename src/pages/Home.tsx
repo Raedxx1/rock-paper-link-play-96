@@ -31,7 +31,7 @@ const Home = () => {
         .from('tic_tac_toe_rooms')
         .insert({
           id: roomCode,
-          board: JSON.stringify(Array(9).fill('')),  // مصفوفة فارغة
+          board: JSON.stringify(Array(9).fill('')), // مصفوفة فارغة
           current_player: 'X',
           winner: null,
           game_status: 'waiting',  // حالة اللعبة
@@ -49,8 +49,10 @@ const Home = () => {
         return;
       }
 
-      // إذا تم إنشاء الغرفة بنجاح
-      navigate(`/tic-tac-toe?r=${roomCode}&host=true`);
+      // إذا تم إنشاء الغرفة بنجاح، توجيه المستخدم إلى صفحة اللعبة
+      const roomLink = `/tic-tac-toe?r=${roomCode}&host=true`;
+      console.log('تم إنشاء الغرفة بنجاح، التوجيه إلى: ', roomLink);
+      navigate(roomLink);  // توجيه المستخدم إلى صفحة اللعبة مع الرابط الجديد
     } catch (error) {
       console.error('Error in connection:', error);  // طباعة الأخطاء في الكونسول
       toast({
