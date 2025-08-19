@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input'; // إذا كان لديك مكون Input
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'; // إذا كان لديك مكونات Card
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 
@@ -17,22 +19,24 @@ const generateRoomCode = () => {
 const Home = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
+  const [joinRoomCode, setJoinRoomCode] = useState('');
+  const [joinLoading, setJoinLoading] = useState(false);
 
   // إنشاء غرفة جديدة
   const createNewGame = async () => {
-    const roomCode = generateRoomCode(); // توليد رمز فريد للغرفة
+    const roomCode = generateRoomCode();
     setLoading(true);
 
     try {
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('tic_tac_toe_rooms')
         .insert({
           id: roomCode,
-          board: JSON.stringify(Array(9).fill('')), // مصفوفة فارغة للوحة
-          current_player: 'X',  // اللاعب الأول
-          winner: null,  // لا يوجد فائز بعد
-          game_status: 'waiting',  // حالة اللعبة
-          player1_name: "مضيف XO",  // اسم اللاعب الأول
+          board: JSON.stringify(Array(9).fill('')),
+          current_player: 'X',
+          winner: null,
+          game_status: 'waiting',
+          player1_name: "مضيف XO",
         });
 
       if (error) {
@@ -45,9 +49,17 @@ const Home = () => {
         return;
       }
 
-      // بعد إنشاء الغرفة بنجاح، قم بتوجيه المستخدم إلى صفحة اللعبة مع رمز الغرفة
-      const roomLink = `/tic-tac-toe?r=${roomCode}&host=true`;
-      navigate(roomLink);
+      // نسخ الرابط إلى الحافظة
+      const roomLink = `${window.location.origin}/tic-tac-toe?r=${roomCode}&host=true`;
+      navigator.clipboard.writeText(roomLink);
+      
+      toast({
+        title: "✅ تم نسخ رابط الغرفة",
+        description: "شارك الرابط مع صديقك للانضمام",
+      });
+
+      // التوجيه إلى الغرفة
+      navigate(`/tic-tac-toe?r=${roomCode}&host=true`);
     } catch (error) {
       console.error('Error in connection:', error);
       toast({
@@ -59,13 +71,107 @@ const Home = () => {
     }
   };
 
+  // الانضمام إلى غرفة موجودة
+  const joinGame = async () => {
+    if (!joinRoomCode.trim()) {
+      toast({
+        title: "❌ رمز الغرفة مطلوب",
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setJoinLoading(true);
+
+    try {
+      // التحقق من وجود الغرفة
+      const { data, error } = await supabase
+        .from('tic_tac_toe_rooms')
+        .select('id, game_status')
+        .eq('id', joinRoomCode.trim())
+        .single();
+
+      if (error || !data) {
+        toast({
+          title: "❌ الغرفة غير موجودة",
+          description: "تأكد من صحة رمز الغرفة",
+          variant: 'destructive',
+        });
+        setJoinLoading(false);
+        return;
+      }
+
+      if (data.game_status === 'finished') {
+        toast({
+          title: "❌ اللعبة انتهت",
+          description: "هذه الغرفة مغلقة، أنشئ غرفة جديدة",
+          variant: 'destructive',
+        });
+        setJoinLoading(false);
+        return;
+      }
+
+      // التوجيه إلى الغرفة
+      navigate(`/tic-tac-toe?r=${joinRoomCode.trim()}&host=false`);
+    } catch (error) {
+      console.error('Error joining room:', error);
+      toast({
+        title: "❌ فشل في الانضمام",
+        description: 'تأكد من اتصالك بالإنترنت',
+        variant: 'destructive',
+      });
+      setJoinLoading(false);
+    }
+  };
+
   return (
-    <div className="min-h-screen flex items-center justify-center">
-      <div className="space-y-4">
-        <Button onClick={createNewGame} disabled={loading}>
-          {loading ? 'جارٍ إنشاء الغرفة...' : 'إنشاء غرفة جديدة'}
-        </Button>
-      </div>
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-green-50 p-4">
+      <Card className="w-full max-w-md">
+        <CardHeader className="text-center">
+          <CardTitle className="text-3xl text-primary">لعبة XO</CardTitle>
+          <CardDescription>العبة الذكاء والتحدي</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="space-y-4">
+            <Button 
+              onClick={createNewGame} 
+              disabled={loading}
+              className="w-full py-6 text-lg"
+              size="lg"
+            >
+              {loading ? 'جارٍ إنشاء الغرفة...' : 'إنشاء غرفة جديدة'}
+            </Button>
+            
+            <div className="relative flex items-center my-4">
+              <div className="flex-grow border-t border-gray-300"></div>
+              <span className="flex-shrink mx-4 text-gray-500">أو</span>
+              <div className="flex-grow border-t border-gray-300"></div>
+            </div>
+            
+            <div className="space-y-2">
+              <Input
+                placeholder="أدخل رمز الغرفة"
+                value={joinRoomCode}
+                onChange={(e) => setJoinRoomCode(e.target.value)}
+                className="text-center py-3 text-lg"
+                dir="ltr"
+              />
+              <Button 
+                onClick={joinGame} 
+                disabled={joinLoading || !joinRoomCode.trim()}
+                variant="outline"
+                className="w-full py-5"
+              >
+                {joinLoading ? 'جارٍ الانضمام...' : 'الانضمام إلى غرفة'}
+              </Button>
+            </div>
+          </div>
+          
+          <div className="text-center text-sm text-gray-500">
+            <p>شارك الرابط مع صديقك للعب معًا</p>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 };
