@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input'; // إذا كان لديك مكون Input
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'; // إذا كان لديك مكونات Card
+import { Input } from '@/components/ui/input';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 
@@ -28,18 +28,29 @@ const Home = () => {
     setLoading(true);
 
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('tic_tac_toe_rooms')
         .insert({
           id: roomCode,
-          board: JSON.stringify(Array(9).fill('')),
-          current_player: 'X',
-          winner: null,
-          game_status: 'waiting',
-          player1_name: "مضيف XO",
-        });
+          board: JSON.stringify(Array(9).fill('')), // مصفوفة فارغة للوحة
+          current_player: 'X',  // اللاعب الأول
+          winner: null,  // لا يوجد فائز بعد
+          game_status: 'waiting',  // حالة اللعبة
+          player1_name: "مضيف XO",  // اسم اللاعب الأول
+          player1_score: 0,  // النتيجة الابتدائية
+          player2_score: 0,  // النتيجة الابتدائية
+          current_round: 1,  // الجولة الحالية
+          round_winner: null,  // فائز الجولة
+          player2_name: null,  // اسم اللاعب الثاني
+          player1_choice: null,  // اختيار اللاعب الأول
+          player2_choice: null,  // اختيار اللاعب الثاني
+          player2_session: null,  // جلسة اللاعب الثاني
+          game_type: 'tic_tac_toe'  // نوع اللعبة
+        })
+        .select();
 
       if (error) {
+        console.error('Error details:', error);
         toast({
           title: "❌ خطأ في إنشاء الغرفة",
           description: `تفاصيل الخطأ: ${error.message}`,
@@ -49,6 +60,8 @@ const Home = () => {
         return;
       }
 
+      console.log('Room created:', data);
+      
       // نسخ الرابط إلى الحافظة
       const roomLink = `${window.location.origin}/tic-tac-toe?r=${roomCode}&host=true`;
       navigator.clipboard.writeText(roomLink);
@@ -129,7 +142,7 @@ const Home = () => {
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <CardTitle className="text-3xl text-primary">لعبة XO</CardTitle>
-          <CardDescription>العبة الذكاء والتحدي</CardDescription>
+          <CardDescription>لعبة الذكاء والتحدي</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="space-y-4">
