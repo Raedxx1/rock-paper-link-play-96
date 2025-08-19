@@ -9,7 +9,7 @@ import './index.css';
 import Index from './pages/Index';      // الصفحة الرئيسية مع خيارين
 import NotFound from './pages/NotFound';
 import GameRoom from './pages/GameRoom'; // حجرة ورقة مقص
-import TicTacToeRoom from './pages/TicTacToeRoom'; // صفحة XO
+import TicTacToeRoom from './pages/Home'; // صفحة XO
 import Home from './pages/Home'; // صفحة إنشاء غرفة XO
 
 const queryClient = new QueryClient();
