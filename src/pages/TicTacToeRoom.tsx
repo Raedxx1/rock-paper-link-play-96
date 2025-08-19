@@ -40,7 +40,7 @@ const TicTacToeRoom = () => {
       setLoading(true);
       try {
         const { data, error } = await supabase
-          .from('tic_tac_toe_rooms')
+          .from('tic_tac_toe_rooms') // استخدام الجدول الصحيح
           .select('*')
           .eq('id', roomCode)
           .single();
@@ -82,7 +82,7 @@ const TicTacToeRoom = () => {
       .on('postgres_changes', {
         event: 'UPDATE',
         schema: 'public',
-        table: 'tic_tac_toe_rooms',
+        table: 'tic_tac_toe_rooms', // استخدام الجدول الصحيح
         filter: `id=eq.${roomCode}`
       }, (payload) => {
         setRoom(payload.new);
@@ -115,7 +115,7 @@ const TicTacToeRoom = () => {
     
     // تحديث اللوحة في قاعدة البيانات
     const { error } = await supabase
-      .from('tic_tac_toe_rooms')
+      .from('tic_tac_toe_rooms') // استخدام الجدول الصحيح
       .update({ board: JSON.stringify(newBoard) })
       .eq('id', roomCode);
 
@@ -144,7 +144,7 @@ const TicTacToeRoom = () => {
     }
     
     const { error } = await supabase
-      .from('tic_tac_toe_rooms')
+      .from('tic_tac_toe_rooms') // استخدام الجدول الصحيح
       .update(updateData)
       .eq('id', roomCode);
 
@@ -158,7 +158,7 @@ const TicTacToeRoom = () => {
     if (!roomCode) return;
 
     const { error } = await supabase
-      .from('tic_tac_toe_rooms')
+      .from('tic_tac_toe_rooms') // استخدام الجدول الصحيح
       .update({
         board: JSON.stringify(Array(9).fill('')),
         round_winner: null,
@@ -182,7 +182,7 @@ const TicTacToeRoom = () => {
     if (!roomCode) return;
 
     const { error } = await supabase
-      .from('tic_tac_toe_rooms')
+      .from('tic_tac_toe_rooms') // استخدام الجدول الصحيح
       .update({
         board: JSON.stringify(Array(9).fill('')),
         player1_score: 0,
