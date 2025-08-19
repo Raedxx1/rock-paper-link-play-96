@@ -26,11 +26,11 @@ const router = createBrowserRouter([
   },
   {
     path: '/tic-tac-toe',
-    element: <Home />, // XO
+    element: <TicTacToeRoom />, // XO
   },
   {
     path: '/xo-home', // مسار منفصل لصفحة إنشاء غرفة XO
-    element: <TicTacToeRoom />,
+    element: <Home />,
   },
 ]);
 
