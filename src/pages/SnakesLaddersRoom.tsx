@@ -342,15 +342,6 @@ const SnakesLaddersRoom = () => {
     return Object.keys(snakesAndLadders.snakes).includes(cellNumber.toString());
   };
 
-  // دالة للحصول على لون الخلية بناءً على موقعها
-  const getCellColor = (row: number, col: number) => {
-    if (row % 2 === 0) {
-      return col % 2 === 0 ? 'bg-blue-100' : 'bg-blue-50';
-    } else {
-      return col % 2 === 0 ? 'bg-blue-50' : 'bg-blue-100';
-    }
-  };
-
   if (!roomCode) {
     return <div>رمز الغرفة مطلوب</div>;
   }
@@ -504,7 +495,7 @@ const SnakesLaddersRoom = () => {
           </CardContent>
         </Card>
 
-        {/* لوحة اللعبة */}
+        {/* لوحة اللعبة مع الصورة */}
         <Card>
           <CardHeader className="text-center">
             <CardTitle>
@@ -514,55 +505,69 @@ const SnakesLaddersRoom = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-10 gap-1 mb-4 bg-white p-2 rounded-lg shadow-inner mx-auto" style={{ maxWidth: '500px' }}>
-              {boardLayout.map((row, rowIndex) => (
-                row.map((cellNumber, colIndex) => {
-                  const playersHere = players.filter(player => 
-                    player.active && player.position === cellNumber
-                  );
-                  
-                  const isLadder = hasLadder(cellNumber);
-                  const isSnake = hasSnake(cellNumber);
-                  
-                  return (
-                    <div
-                      key={cellNumber}
-                      className={`w-10 h-10 border border-gray-300 flex items-center justify-center relative text-xs font-medium ${getCellColor(rowIndex, colIndex)}`}
-                    >
-                      <span className="absolute top-0 left-0 text-[8px] p-1">{cellNumber}</span>
-                      
-                      {isLadder && (
-                        <div className="absolute bottom-0 right-0 text-lg" title={`سلم إلى ${snakesAndLadders.ladders[cellNumber as keyof typeof snakesAndLadders.ladders]}`}>
-                          🪜
-                        </div>
-                      )}
-                      
-                      {isSnake && (
-                        <div className="absolute bottom-0 right-0 text-lg" title={`ثعبان إلى ${snakesAndLadders.snakes[cellNumber as keyof typeof snakesAndLadders.snakes]}`}>
-                          🐍
-                        </div>
-                      )}
-                      
-                      {playersHere.length > 0 && (
-                        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 flex">
-                          {playersHere.slice(0, 2).map((player, idx) => (
-                            <div
-                              key={idx}
-                              className={`w-4 h-4 rounded-full ${player.color} border border-white`}
-                              title={player.name}
-                            />
-                          ))}
-                          {playersHere.length > 2 && (
-                            <div className="w-4 h-4 rounded-full bg-gray-500 text-white text-[8px] flex items-center justify-center border border-white">
-                              +{playersHere.length - 2}
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })
-              ))}
+            <div className="relative mb-4" style={{ width: '100%', paddingBottom: '100%', maxWidth: '500px', margin: '0 auto' }}>
+              {/* الصورة كخلفية للوحة */}
+              <img 
+                src="/snakes-ladders-board.jpg" 
+                alt="لوحة السلم والثعبان" 
+                className="absolute inset-0 w-full h-full object-cover rounded-lg"
+                onError={(e) => {
+                  // إذا فشل تحميل الصورة، نعرض بديلاً
+                  e.currentTarget.style.display = 'none';
+                }}
+              />
+              
+              {/* طبقة الشبكة الشفافة فوق الصورة */}
+              <div className="absolute inset-0 grid grid-cols-10 grid-rows-10 gap-0">
+                {boardLayout.map((row, rowIndex) => (
+                  row.map((cellNumber, colIndex) => {
+                    const playersHere = players.filter(player => 
+                      player.active && player.position === cellNumber
+                    );
+                    
+                    const isLadder = hasLadder(cellNumber);
+                    const isSnake = hasSnake(cellNumber);
+                    
+                    return (
+                      <div
+                        key={cellNumber}
+                        className="relative border border-gray-300 bg-white bg-opacity-0 hover:bg-opacity-20 transition-all duration-200"
+                      >
+                        {/* عرض اللاعبين */}
+                        {playersHere.length > 0 && (
+                          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 flex">
+                            {playersHere.slice(0, 2).map((player, idx) => (
+                              <div
+                                key={idx}
+                                className={`w-4 h-4 rounded-full ${player.color} border border-white`}
+                                title={player.name}
+                              />
+                            ))}
+                            {playersHere.length > 2 && (
+                              <div className="w-4 h-4 rounded-full bg-gray-500 text-white text-[8px] flex items-center justify-center border border-white">
+                                +{playersHere.length - 2}
+                              </div>
+                            )}
+                          </div>
+                        )}
+                        
+                        {/* عرض رموز السلالم والثعابين */}
+                        {isLadder && (
+                          <div className="absolute bottom-0 right-0 text-lg" title={`سلم إلى ${snakesAndLadders.ladders[cellNumber as keyof typeof snakesAndLadders.ladders]}`}>
+                            🪜
+                          </div>
+                        )}
+                        
+                        {isSnake && (
+                          <div className="absolute bottom-0 right-0 text-lg" title={`ثعبان إلى ${snakesAndLadders.snakes[cellNumber as keyof typeof snakesAndLadders.snakes]}`}>
+                            🐍
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })
+                ))}
+              </div>
             </div>
 
             {roomData.game_status === 'playing' && (
@@ -579,77 +584,4 @@ const SnakesLaddersRoom = () => {
 
             {roomData.game_status === 'finished' && (
               <div className="text-center">
-                <Button onClick={resetGame} className="bg-gradient-to-r from-green-500 to-teal-500 hover:from-green-600 hover:to-teal-600 text-white">
-                  <RotateCcw className="ml-2 h-4 w-4" />
-                  لعبة جديدة
-                </Button>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* معلومات اللاعبين */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center">
-              <Users className="ml-2 h-5 w-5" />
-              اللاعبون ({activePlayers.length}/4)
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              {players.map((player, index) => (
-                player.active && (
-                  <div key={index} className="flex justify-between items-center p-2 bg-gray-100 dark:bg-gray-800 rounded">
-                    <div className="flex items-center">
-                      <div className={`w-4 h-4 rounded-full ${player.color} mr-2`}></div>
-                      <span>{player.name} (لاعب {index + 1})</span>
-                    </div>
-                    <span className="font-semibold">المربع: {player.position}</span>
-                  </div>
-                )
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* مفتاح الرموز */}
-        <Card>
-          <CardHeader>
-            <CardTitle>مفتاح الرموز</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="flex items-center">
-                <span className="text-2xl mr-2">🪜</span>
-                <span>سلم - يصعدك لمربع أعلى</span>
-              </div>
-              <div className="flex items-center">
-                <span className="text-2xl mr-2">🐍</span>
-                <span>ثعبان - ينزلك لمربع أدنى</span>
-              </div>
-              <div className="flex items-center">
-                <div className="w-4 h-4 rounded-full bg-red-500 mr-2"></div>
-                <span>اللاعب الأول</span>
-              </div>
-              <div className="flex items-center">
-                <div className="w-4 h-4 rounded-full bg-blue-500 mr-2"></div>
-                <span>اللاعب الثاني</span>
-              </div>
-              <div className="flex items-center">
-                <div className="w-4 h-4 rounded-full bg-green-500 mr-2"></div>
-                <span>اللاعب الثالث</span>
-              </div>
-              <div className="flex items-center">
-                <div className="w-4 h-4 rounded-full bg-yellow-500 mr-2"></div>
-                <span>اللاعب الرابع</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    </div>
-  );
-};
-
-export default SnakesLaddersRoom;
+  
