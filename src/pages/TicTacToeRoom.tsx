@@ -2,10 +2,12 @@ import { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Copy, ArrowLeft, RotateCcw } from 'lucide-react';
+import { Copy, ArrowLeft, RotateCcw, Users, Trophy, Crown } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { ThemeToggle } from '@/components/ThemeToggle';
+import Confetti from 'react-confetti';
+import { useWindowSize } from 'react-use';
 
 interface TicTacToeRoom {
   id: string;
@@ -26,16 +28,24 @@ const TicTacToeRoom = () => {
   const navigate = useNavigate();
   const roomCode = searchParams.get('r');
   const isHost = searchParams.get('host') === 'true';
+  const { width, height } = useWindowSize();
   
   const [roomData, setRoomData] = useState<TicTacToeRoom | null>(null);
   const [playerName, setPlayerName] = useState('');
   const [isPlayer2, setIsPlayer2] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [showConfetti, setShowConfetti] = useState(false);
   
-  // إنشاء session ID فريد لهذا المستخدم
   const [sessionId] = useState(() => `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`);
 
-  // جلب بيانات الغرفة
+  useEffect(() => {
+    if (roomData?.game_status === 'game_complete') {
+      setShowConfetti(true);
+      const timer = setTimeout(() => setShowConfetti(false), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [roomData?.game_status]);
+
   const fetchRoomData = async () => {
     if (!roomCode) return;
 
@@ -60,7 +70,6 @@ const TicTacToeRoom = () => {
     setRoomData(data as TicTacToeRoom);
     setLoading(false);
 
-    // تحديد دور اللاعب
     if (!isHost) {
       if (!data.player2_name) {
         setIsPlayer2(true);
@@ -72,7 +81,6 @@ const TicTacToeRoom = () => {
     }
   };
 
-  // إعداد الاشتراك في التحديثات الفورية
   useEffect(() => {
     if (!roomCode) {
       navigate('/');
@@ -81,7 +89,6 @@ const TicTacToeRoom = () => {
 
     fetchRoomData();
 
-    // الاشتراك في التحديثات الفورية
     const subscription = supabase
       .channel('tic_tac_toe_room_changes')
       .on(
@@ -97,7 +104,6 @@ const TicTacToeRoom = () => {
             const newData = payload.new as TicTacToeRoom;
             setRoomData(newData);
             
-            // تحديث حالة isPlayer2 بناءً على البيانات الجديدة
             if (!isHost) {
               if (!newData.player2_name) {
                 setIsPlayer2(true);
@@ -117,7 +123,6 @@ const TicTacToeRoom = () => {
     };
   }, [roomCode, navigate, isHost]);
 
-  // انضمام اللاعب الثاني
   const joinAsPlayer2 = async () => {
     if (!playerName.trim() || !roomCode) return;
 
@@ -148,12 +153,11 @@ const TicTacToeRoom = () => {
     });
   };
 
-  // التحقق من الفائز في XO
   const checkWinner = (board: string[]): 'player1' | 'player2' | 'tie' | null => {
     const lines = [
-      [0, 1, 2], [3, 4, 5], [6, 7, 8], // rows
-      [0, 3, 6], [1, 4, 7], [2, 5, 8], // columns
-      [0, 4, 8], [2, 4, 6] // diagonals
+      [0, 1, 2], [3, 4, 5], [6, 7, 8],
+      [0, 3, 6], [1, 4, 7], [2, 5, 8],
+      [0, 4, 8], [2, 4, 6]
     ];
 
     for (const [a, b, c] of lines) {
@@ -167,11 +171,9 @@ const TicTacToeRoom = () => {
     return null;
   };
 
-  // التعامل مع النقر على خلية
   const handleCellClick = async (index: number) => {
     if (!roomData || !roomCode || roomData.game_status !== 'playing') return;
 
-    // التحقق من أن الشخص له صلاحية اللعب
     if (!isHost && isPlayer2 && roomData.player2_session_id !== sessionId) {
       toast({
         title: "❌ غير مسموح",
@@ -184,14 +186,11 @@ const TicTacToeRoom = () => {
 
     const currentBoard = JSON.parse(roomData.board || '["", "", "", "", "", "", "", "", ""]');
     
-    // التحقق إذا كانت الخلية محجوزة بالفعل
     if (currentBoard[index]) return;
 
-    // تحديد رمز اللاعب الحالي
     const playerSymbol = (isHost || !isPlayer2) ? 'X' : 'O';
     currentBoard[index] = playerSymbol;
 
-    // التحقق من الفائز
     const winner = checkWinner(currentBoard);
 
     let updateData: any = {
@@ -209,7 +208,6 @@ const TicTacToeRoom = () => {
         updateData.player2_score = (roomData.player2_score || 0) + 1;
       }
 
-      // التحقق إذا كان هناك فائز في اللعبة
       const newPlayer1Score = updateData.player1_score || roomData.player1_score;
       const newPlayer2Score = updateData.player2_score || roomData.player2_score;
 
@@ -232,7 +230,6 @@ const TicTacToeRoom = () => {
     }
   };
 
-  // إعادة تعيين الجولة
   const resetRound = async () => {
     if (!roomCode) return;
 
@@ -256,7 +253,6 @@ const TicTacToeRoom = () => {
     }
   };
 
-  // إعادة تعيين اللعبة
   const resetGame = async () => {
     if (!roomCode) return;
 
@@ -282,7 +278,6 @@ const TicTacToeRoom = () => {
     }
   };
 
-  // نسخ رابط الغرفة
   const shareRoom = async () => {
     const link = `${window.location.origin}/tic-tac-toe?r=${roomCode}`;
     try {
@@ -306,10 +301,10 @@ const TicTacToeRoom = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 flex items-center justify-center" dir="rtl">
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center" dir="rtl">
         <div className="text-center">
-          <div className="text-4xl mb-4">⏳</div>
-          <p className="text-lg text-gray-600">جارٍ تحميل الغرفة...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-lg text-gray-600 dark:text-gray-300">جارٍ تحميل الغرفة...</p>
         </div>
       </div>
     );
@@ -317,10 +312,10 @@ const TicTacToeRoom = () => {
 
   if (!roomData) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 flex items-center justify-center" dir="rtl">
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center" dir="rtl">
         <div className="text-center">
           <div className="text-4xl mb-4">❌</div>
-          <p className="text-lg text-gray-600">الغرفة غير موجودة</p>
+          <p className="text-lg text-gray-600 dark:text-gray-300">الغرفة غير موجودة</p>
           <Button onClick={() => navigate('/')} className="mt-4">
             العودة للرئيسية
           </Button>
@@ -329,16 +324,18 @@ const TicTacToeRoom = () => {
     );
   }
 
-  // إذا كانت الغرفة ممتلئة والمستخدم ليس من اللاعبين
   if (roomData.player2_name && !isHost && !isPlayer2) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 flex items-center justify-center p-4" dir="rtl">
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center p-4" dir="rtl">
         <Card className="w-full max-w-md">
           <CardHeader className="text-center">
-            <CardTitle className="text-2xl">🚫 الغرفة ممتلئة</CardTitle>
+            <CardTitle className="text-2xl flex justify-center items-center gap-2">
+              <Users className="text-red-500" />
+              الغرفة ممتلئة
+            </CardTitle>
           </CardHeader>
           <CardContent className="text-center space-y-4">
-            <p className="text-gray-600">هذه الغرفة تحتوي على لاعبين بالفعل</p>
+            <p className="text-gray-600 dark:text-gray-300">هذه الغرفة تحتوي على لاعبين بالفعل</p>
             <Button onClick={() => navigate('/')} className="w-full">
               <ArrowLeft className="ml-2 h-4 w-4" />
               العودة للرئيسية
@@ -349,28 +346,30 @@ const TicTacToeRoom = () => {
     );
   }
 
-  // إذا كان اللاعب الثاني يحتاج لإدخال اسمه
   if (isPlayer2 && !roomData.player2_name) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 flex items-center justify-center p-4" dir="rtl">
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center p-4" dir="rtl">
         <Card className="w-full max-w-md">
           <CardHeader className="text-center">
-            <CardTitle className="text-2xl">🎮 انضمام للعبة</CardTitle>
+            <CardTitle className="text-2xl flex justify-center items-center gap-2">
+              <Users className="text-blue-500" />
+              انضمام للعبة
+            </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
-              <label className="block text-sm font-medium mb-2">اسمك:</label>
+              <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">اسمك:</label>
               <input
                 value={playerName}
                 onChange={(e) => setPlayerName(e.target.value)}
                 placeholder="أدخل اسمك هنا"
-                className="w-full p-2 border border-gray-300 rounded text-right"
+                className="w-full p-3 border border-gray-300 rounded-lg text-right focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white dark:border-gray-600"
                 onKeyPress={(e) => e.key === 'Enter' && joinAsPlayer2()}
               />
             </div>
             <Button 
               onClick={joinAsPlayer2} 
-              className="w-full"
+              className="w-full py-3"
               disabled={!playerName.trim()}
             >
               انضم للعبة
@@ -384,47 +383,68 @@ const TicTacToeRoom = () => {
   const currentBoard = JSON.parse(roomData.board || '["", "", "", "", "", "", "", "", ""]');
   const isGameComplete = roomData.game_status === 'game_complete';
   const isRoundComplete = roomData.game_status === 'round_complete';
+  const isPlaying = roomData.game_status === 'playing';
+  const isWaiting = roomData.game_status === 'waiting';
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 dark:from-gray-900 dark:to-gray-800 p-4" dir="rtl">
+      {showConfetti && <Confetti width={width} height={height} recycle={false} />}
+      
       <div className="max-w-md mx-auto space-y-6">
-        {/* شريط التنقل */}
         <div className="flex justify-between items-center">
           <div className="flex gap-2">
             <Button 
               onClick={() => navigate('/')} 
               variant="outline" 
               size="sm"
+              className="gap-1"
             >
-              <ArrowLeft className="ml-2 h-4 w-4" />
+              <ArrowLeft className="h-4 w-4" />
               الرئيسية
             </Button>
             
             {(isHost || !isPlayer2) && (
-              <Button onClick={shareRoom} variant="outline" size="sm">
-                <Copy className="ml-2 h-4 w-4" />
-                مشاركة الرابط
+              <Button onClick={shareRoom} variant="outline" size="sm" className="gap-1">
+                <Copy className="h-4 w-4" />
+                مشاركة
               </Button>
             )}
           </div>
           
-          <ThemeToggle />
+          <div className="flex items-center gap-2">
+            <div className="text-xs bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 px-2 py-1 rounded-full">
+              {roomCode}
+            </div>
+            <ThemeToggle />
+          </div>
         </div>
 
-        {/* النتيجة */}
-        <Card>
+        <Card className="shadow-lg">
           <CardContent className="pt-6">
             <div className="text-center space-y-2">
-              <h2 className="text-xl font-bold">النتيجة</h2>
+              <h2 className="text-xl font-bold flex items-center justify-center gap-2">
+                <Trophy className="text-yellow-500" />
+                النتيجة
+              </h2>
               <div className="flex justify-center space-x-8 text-lg font-semibold">
                 <div className="text-center">
-                  <div className="text-2xl font-bold text-blue-600">{roomData.player1_score || 0}</div>
-                  <div className="text-sm text-gray-600">{roomData.player1_name}</div>
+                  <div className={`text-2xl font-bold ${(isHost || !isPlayer2) ? 'text-blue-600' : 'text-gray-600'}`}>
+                    {roomData.player1_score || 0}
+                  </div>
+                  <div className="text-sm text-gray-600 dark:text-gray-300 flex items-center justify-center gap-1">
+                    {roomData.player1_name}
+                    {isHost && <Crown className="h-4 w-4 text-yellow-500" />}
+                  </div>
                 </div>
-                <div className="text-3xl">VS</div>
+                <div className="text-3xl text-gray-400">-</div>
                 <div className="text-center">
-                  <div className="text-2xl font-bold text-red-600">{roomData.player2_score || 0}</div>
-                  <div className="text-sm text-gray-600">{roomData.player2_name || 'في الانتظار...'}</div>
+                  <div className={`text-2xl font-bold ${(!isHost && isPlayer2) ? 'text-red-600' : 'text-gray-600'}`}>
+                    {roomData.player2_score || 0}
+                  </div>
+                  <div className="text-sm text-gray-600 dark:text-gray-300 flex items-center justify-center gap-1">
+                    {roomData.player2_name || 'في الانتظار...'}
+                    {!isHost && isPlayer2 && <Crown className="h-4 w-4 text-yellow-500" />}
+                  </div>
                 </div>
               </div>
               <div className="text-sm text-gray-500">الجولة {roomData.current_round || 1}</div>
@@ -432,74 +452,76 @@ const TicTacToeRoom = () => {
           </CardContent>
         </Card>
 
-        {/* انتظار اللاعب الثاني */}
-        {roomData.game_status === 'waiting' && (
-          <Card>
+        {isWaiting && (
+          <Card className="shadow-lg">
             <CardContent className="pt-6 text-center">
-              <div className="text-4xl mb-4">⏳</div>
+              <div className="animate-pulse text-4xl mb-4">⏳</div>
               <p className="text-lg font-medium">في انتظار اللاعب الثاني...</p>
-              <p className="text-sm text-gray-600 mt-2">شارك الرابط مع صديقك</p>
+              <p className="text-sm text-gray-600 dark:text-gray-300 mt-2">شارك الرابط مع صديقك</p>
             </CardContent>
           </Card>
         )}
 
-        {/* لوحة اللعبة */}
-        {(roomData.game_status === 'playing' || isRoundComplete || isGameComplete) && (
-          <Card>
+        {(isPlaying || isRoundComplete || isGameComplete) && (
+          <Card className="shadow-lg">
             <CardHeader className="text-center">
               <CardTitle>
                 {isGameComplete ? '🎉 نهاية اللعبة!' : 
                  isRoundComplete ? '✅ نهاية الجولة!' : 
-                 '❌⭕ دورك!'}
+                 `دور ${(isHost || !isPlayer2) ? roomData.player1_name : roomData.player2_name}`}
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-3 gap-2 mb-4">
+              <div className="grid grid-cols-3 gap-3 mb-6 bg-gray-200 dark:bg-gray-700 p-3 rounded-lg">
                 {currentBoard.map((cell, index) => (
-                  <Button
+                  <div
                     key={index}
-                    className={`w-full h-16 text-2xl font-bold ${
-                      cell === 'X' ? 'bg-blue-500 text-white hover:bg-blue-600' :
-                      cell === 'O' ? 'bg-red-500 text-white hover:bg-red-600' :
-                      'bg-gray-100 hover:bg-gray-200'
-                    }`}
-                    onClick={() => roomData.game_status === 'playing' && handleCellClick(index)}
-                    disabled={roomData.game_status !== 'playing' || !!cell}
+                    className={`aspect-square rounded-md flex items-center justify-center text-4xl font-bold cursor-pointer transition-all
+                      ${cell === 'X' ? 'bg-blue-500 text-white' :
+                        cell === 'O' ? 'bg-red-500 text-white' :
+                        'bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700'}`}
+                    onClick={() => isPlaying && handleCellClick(index)}
                   >
-                    {cell}
-                  </Button>
+                    {cell === 'X' ? 'X' : cell === 'O' ? 'O' : ''}
+                  </div>
                 ))}
               </div>
 
               {(isRoundComplete || isGameComplete) && roomData.winner && (
-                <div className="text-center p-4 bg-green-100 rounded-lg">
+                <div className="text-center p-4 bg-green-100 dark:bg-green-900 rounded-lg mb-4">
                   <p className="text-lg font-semibold">
                     {roomData.winner === 'tie' ? '🤝 تعادل!' : 
                      `🎉 الفائز: ${roomData.winner === 'player1' ? roomData.player1_name : roomData.player2_name}`}
                   </p>
+                  {isGameComplete && (
+                    <p className="mt-2 text-sm">
+                      {roomData.player1_score > roomData.player2_score ? 
+                       `${roomData.player1_name} فاز باللعبة!` : 
+                       `${roomData.player2_name} فاز باللعبة!`}
+                    </p>
+                  )}
                 </div>
               )}
             </CardContent>
           </Card>
         )}
 
-        {/* أزرار التحكم */}
         {(isRoundComplete || isGameComplete) && (
-          <div className="text-center space-x-2">
+          <div className="flex gap-2 justify-center">
             <Button 
               onClick={resetRound} 
               disabled={isGameComplete}
-              className="bg-blue-600 hover:bg-blue-700"
+              className="flex-1 py-3 gap-1"
             >
-              <RotateCcw className="ml-2 h-4 w-4" />
+              <RotateCcw className="h-4 w-4" />
               الجولة التالية
             </Button>
             
             <Button 
               onClick={resetGame} 
-              className="bg-green-600 hover:bg-green-700"
+              className="flex-1 py-3 gap-1 bg-green-600 hover:bg-green-700"
             >
-              <RotateCcw className="ml-2 h-4 w-4" />
+              <RotateCcw className="h-4 w-4" />
               لعبة جديدة
             </Button>
           </div>
