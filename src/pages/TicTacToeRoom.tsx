@@ -2,46 +2,99 @@ import { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Copy, ArrowLeft, RotateCcw } from 'lucide-react';
+import { Copy, ArrowLeft, RotateCcw, Users } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { ThemeToggle } from '@/components/ThemeToggle';
 
-interface TicTacToeRoom {
+interface SnakesLaddersRoom {
   id: string;
   player1_name: string;
   player2_name: string | null;
+  player3_name: string | null;
+  player4_name: string | null;
+  player1_session_id: string | null;
   player2_session_id: string | null;
-  board: string;
-  player1_score: number;
-  player2_score: number;
-  current_round: number;
-  game_status: 'waiting' | 'playing' | 'round_complete' | 'game_complete';
-  winner: 'player1' | 'player2' | 'tie' | null;
-  round_winner: 'player1' | 'player2' | 'tie' | null;
-  current_player: 'player1' | 'player2'; // تمت إضافة هذا الحقل
+  player3_session_id: string | null;
+  player4_session_id: string | null;
+  player_positions: string;
+  board_state: string;
+  current_player_index: number;
+  max_players: number;
+  game_status: 'waiting' | 'playing' | 'finished';
+  winner: string | null;
+  dice_value: number | null;
+  created_at: string;
 }
 
-const TicTacToeRoom = () => {
+const SnakesLaddersRoom = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const roomCode = searchParams.get('r');
   const isHost = searchParams.get('host') === 'true';
   
-  const [roomData, setRoomData] = useState<TicTacToeRoom | null>(null);
+  const [roomData, setRoomData] = useState<SnakesLaddersRoom | null>(null);
   const [playerName, setPlayerName] = useState('');
-  const [isPlayer2, setIsPlayer2] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [playerNumber, setPlayerNumber] = useState<number | null>(null);
   
-  // إنشاء session ID فريد لهذا المستخدم
   const [sessionId] = useState(() => `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`);
 
-  // جلب بيانات الغرفة
+  // تعريف السلالم والثعابين بناءً على الخريطة المعدلة
+  const snakesAndLadders = {
+    ladders: {
+      1: 38,
+      4: 14,
+      9: 31,
+      21: 42,
+      28: 84,
+      51: 67,
+      80: 100,
+      71: 91
+    },
+    snakes: {
+      17: 7,
+      54: 34,
+      62: 19,
+      64: 60,
+      87: 24,
+      93: 73,
+      98: 79,
+      99: 41
+    }
+  };
+
+  // إحداثيات الخلايا على اللوحة (10x10) - تبدأ من الأسفل على اليسار وتتجه للأعلى
+  const boardLayout = [
+    // الصف 1 (الأسفل) - يبدأ من اليسار
+    [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+    // الصف 2 - من اليمين إلى اليسار
+    [20, 19, 18, 17, 16, 15, 14, 13, 12, 11],
+    // الصف 3 - من اليسار إلى اليمين
+    [21, 22, 23, 24, 25, 26, 27, 28, 29, 30],
+    // الصف 4 - من اليمين إلى اليسار
+    [40, 39, 38, 37, 36, 35, 34, 33, 32, 31],
+    // الصف 5 - من اليسار إلى اليمين
+    [41, 42, 43, 44, 45, 46, 47, 48, 49, 50],
+    // الصف 6 - من اليمين إلى اليسار
+    [60, 59, 58, 57, 56, 55, 54, 53, 52, 51],
+    // الصف 7 - من اليسار إلى اليمين
+    [61, 62, 63, 64, 65, 66, 67, 68, 69, 70],
+    // الصف 8 - من اليمين إلى اليسار
+    [80, 79, 78, 77, 76, 75, 74, 73, 72, 71],
+    // الصف 9 - من اليسار إلى اليمين
+    [81, 82, 83, 84, 85, 86, 87, 88, 89, 90],
+    // الصف 10 (الأعلى) - من اليمين إلى اليسار
+    [100, 99, 98, 97, 96, 95, 94, 93, 92, 91]
+  ];
+
+  // عكس ترتيب الصفوف لجعل الصف الأول (الأسفل) يظهر أولاً
+  const reversedBoardLayout = [...boardLayout].reverse();
+
   const fetchRoomData = async () => {
     if (!roomCode) return;
 
     const { data, error } = await supabase
-      .from('tic_tac_toe_rooms')
+      .from('snakes_ladders_rooms')
       .select('*')
       .eq('id', roomCode)
       .single();
@@ -53,61 +106,56 @@ const TicTacToeRoom = () => {
           description: "تأكد من صحة الرابط",
           variant: "destructive"
         });
-        navigate('/');
+        navigate('/snakes-home');
       }
       return;
     }
 
-    setRoomData(data as TicTacToeRoom);
+    setRoomData(data as SnakesLaddersRoom);
     setLoading(false);
+    determinePlayerNumber(data as SnakesLaddersRoom);
+  };
 
-    // تحديد دور اللاعب
-    if (!isHost) {
-      if (!data.player2_name) {
-        setIsPlayer2(true);
-      } else if (data.player2_session_id === sessionId) {
-        setIsPlayer2(true);
-      } else {
-        setIsPlayer2(false);
-      }
+  const determinePlayerNumber = (data: SnakesLaddersRoom) => {
+    if (isHost) {
+      setPlayerNumber(1);
+      return;
+    }
+
+    if (!data.player2_name || data.player2_session_id === sessionId) {
+      setPlayerNumber(2);
+    } else if (!data.player3_name || data.player3_session_id === sessionId) {
+      setPlayerNumber(3);
+    } else if (!data.player4_name || data.player4_session_id === sessionId) {
+      setPlayerNumber(4);
+    } else {
+      setPlayerNumber(null);
     }
   };
 
-  // إعداد الاشتراك في التحديثات الفورية
   useEffect(() => {
     if (!roomCode) {
-      navigate('/');
+      navigate('/snakes-home');
       return;
     }
 
     fetchRoomData();
 
-    // الاشتراك في التحديثات الفورية
     const subscription = supabase
-      .channel('tic_tac_toe_room_changes')
+      .channel('snakes_ladders_room_changes')
       .on(
         'postgres_changes',
         {
           event: '*',
           schema: 'public',
-          table: 'tic_tac_toe_rooms',
+          table: 'snakes_ladders_rooms',
           filter: `id=eq.${roomCode}`
         },
         (payload) => {
           if (payload.eventType === 'UPDATE') {
-            const newData = payload.new as TicTacToeRoom;
+            const newData = payload.new as SnakesLaddersRoom;
             setRoomData(newData);
-            
-            // تحديث حالة isPlayer2 بناءً على البيانات الجديدة
-            if (!isHost) {
-              if (!newData.player2_name) {
-                setIsPlayer2(true);
-              } else if (newData.player2_session_id === sessionId) {
-                setIsPlayer2(true);
-              } else {
-                setIsPlayer2(false);
-              }
-            }
+            determinePlayerNumber(newData);
           }
         }
       )
@@ -118,29 +166,28 @@ const TicTacToeRoom = () => {
     };
   }, [roomCode, navigate, isHost]);
 
-  // انضمام اللاعب الثاني
-  const joinAsPlayer2 = async () => {
-    if (!playerName.trim() || !roomCode) return;
+  const joinGame = async () => {
+    if (!playerName.trim() || !roomCode || !playerNumber) return;
 
-    const { data: updateResult, error } = await supabase
-      .from('tic_tac_toe_rooms')
+    const updateField = `player${playerNumber}_name`;
+    const sessionField = `player${playerNumber}_session_id`;
+    
+    const { error } = await supabase
+      .from('snakes_ladders_rooms')
       .update({
-        player2_name: playerName.trim(),
-        player2_session_id: sessionId,
-        game_status: 'playing',
-        current_player: 'player1' // يبدأ اللاعب الأول بعد الانضمام
+        [updateField]: playerName.trim(),
+        [sessionField]: sessionId,
+        game_status: roomData?.player2_name ? 'playing' : 'waiting'
       })
       .eq('id', roomCode)
-      .is('player2_name', null)
-      .select();
+      .is(updateField, null);
 
-    if (error || !updateResult || updateResult.length === 0) {
+    if (error) {
       toast({
-        title: "❌ الغرفة ممتلئة",
-        description: "لقد انضم لاعب آخر بالفعل",
+        title: "❌ خطأ في الانضمام",
+        description: "حاول مرة أخرى",
         variant: "destructive"
       });
-      fetchRoomData();
       return;
     }
 
@@ -150,45 +197,10 @@ const TicTacToeRoom = () => {
     });
   };
 
-  // التحقق من الفائز في XO
-  const checkWinner = (board: string[]): 'player1' | 'player2' | 'tie' | null => {
-    const lines = [
-      [0, 1, 2], [3, 4, 5], [6, 7, 8], // rows
-      [0, 3, 6], [1, 4, 7], [2, 5, 8], // columns
-      [0, 4, 8], [2, 4, 6] // diagonals
-    ];
-
-    for (const [a, b, c] of lines) {
-      if (board[a] && board[a] === board[b] && board[a] === board[c]) {
-        return board[a] === 'X' ? 'player1' : 'player2';
-      }
-    }
-
-    if (board.every(cell => cell)) return 'tie';
-
-    return null;
-  };
-
-  // التعامل مع النقر على خلية
-  const handleCellClick = async (index: number) => {
-    if (!roomData || !roomCode || roomData.game_status !== 'playing') return;
-
-    // التحقق من أن الشخص له صلاحية اللعب
-    if (!isHost && isPlayer2 && roomData.player2_session_id !== sessionId) {
-      toast({
-        title: "❌ غير مسموح",
-        description: "هذا الحساب مخصص للاعب آخر",
-        variant: "destructive"
-      });
-      fetchRoomData();
-      return;
-    }
-
-    // التحقق من أن هذا اللاعب هو من يحق له اللعب الآن
-    const isPlayer1Turn = roomData.current_player === 'player1';
-    const isPlayer2Turn = roomData.current_player === 'player2';
+  const rollDice = async () => {
+    if (!roomCode || !roomData || roomData.game_status !== 'playing') return;
     
-    if ((isHost && !isPlayer1Turn) || (!isHost && isPlayer2 && !isPlayer2Turn) || (!isHost && !isPlayer2 && !isPlayer1Turn)) {
+    if (playerNumber !== roomData.current_player_index + 1) {
       toast({
         title: "⏳ ليس دورك الآن",
         description: "انتظر دورك للعب",
@@ -197,97 +209,91 @@ const TicTacToeRoom = () => {
       return;
     }
 
-    const currentBoard = JSON.parse(roomData.board || '["", "", "", "", "", "", "", "", ""]');
+    const diceValue = Math.floor(Math.random() * 6) + 1;
+    const positions = JSON.parse(roomData.player_positions || '[0,0,0,0]');
     
-    // التحقق إذا كانت الخلية محجوزة بالفعل
-    if (currentBoard[index]) return;
-
-    // تحديد رمز اللاعب الحالي
-    const playerSymbol = (isHost || !isPlayer2) ? 'X' : 'O';
-    currentBoard[index] = playerSymbol;
-
+    // تحديث موقع اللاعب الحالي
+    const currentPlayerIndex = roomData.current_player_index;
+    positions[currentPlayerIndex] += diceValue;
+    
     // التحقق من الفائز
-    const winner = checkWinner(currentBoard);
-
-    let updateData: any = {
-      board: JSON.stringify(currentBoard),
-      current_player: roomData.current_player === 'player1' ? 'player2' : 'player1' // تغيير الدور
-    };
-
-    if (winner) {
-      updateData.winner = winner;
-      updateData.game_status = 'round_complete';
-      updateData.round_winner = winner;
-      
-      if (winner === 'player1') {
-        updateData.player1_score = (roomData.player1_score || 0) + 1;
-      } else if (winner === 'player2') {
-        updateData.player2_score = (roomData.player2_score || 0) + 1;
-      }
-
-      // التحقق إذا كان هناك فائز في اللعبة
-      const newPlayer1Score = updateData.player1_score || roomData.player1_score;
-      const newPlayer2Score = updateData.player2_score || roomData.player2_score;
-
-      if (newPlayer1Score >= 3 || newPlayer2Score >= 3) {
-        updateData.game_status = 'game_complete';
-      }
+    let newGameStatus = roomData.game_status;
+    let winner = null;
+    
+    if (positions[currentPlayerIndex] >= 100) {
+      positions[currentPlayerIndex] = 100;
+      newGameStatus = 'finished';
+      winner = roomData[`player${currentPlayerIndex + 1}_name` as keyof SnakesLaddersRoom];
     }
-
-    const { error } = await supabase
-      .from('tic_tac_toe_rooms')
-      .update(updateData)
-      .eq('id', roomCode);
-
-    if (error) {
+    
+    // تطبيق قواعد السلم والثعبان
+    const currentPosition = positions[currentPlayerIndex];
+    
+    // التحقق من السلالم
+    if (snakesAndLadders.ladders[currentPosition as keyof typeof snakesAndLadders.ladders]) {
+      const ladderTarget = snakesAndLadders.ladders[currentPosition as keyof typeof snakesAndLadders.ladders];
+      positions[currentPlayerIndex] = ladderTarget;
       toast({
-        title: "❌ خطأ في الحركة",
-        description: "حاول مرة أخرى",
-        variant: "destructive"
+        title: "🪜 صعدت سلم!",
+        description: `تقدمت إلى المربع ${ladderTarget}`
       });
     }
-  };
-
-  // إعادة تعيين الجولة
-  const resetRound = async () => {
-    if (!roomCode) return;
+    // التحقق من الثعابين
+    else if (snakesAndLadders.snakes[currentPosition as keyof typeof snakesAndLadders.snakes]) {
+      const snakeTarget = snakesAndLadders.snakes[currentPosition as keyof typeof snakesAndLadders.snakes];
+      positions[currentPlayerIndex] = snakeTarget;
+      toast({
+        title: "🐍 وقعت في ثعبان!",
+        description: `تراجعت إلى المربع ${snakeTarget}`
+      });
+    }
+    
+    // حساب اللاعب التالي
+    let nextPlayerIndex = (currentPlayerIndex + 1) % 4;
+    
+    // تخطي اللاعبين غير النشطين
+    const players = [
+      roomData.player1_name,
+      roomData.player2_name,
+      roomData.player3_name,
+      roomData.player4_name
+    ];
+    
+    while (!players[nextPlayerIndex] && nextPlayerIndex !== currentPlayerIndex) {
+      nextPlayerIndex = (nextPlayerIndex + 1) % 4;
+    }
 
     const { error } = await supabase
-      .from('tic_tac_toe_rooms')
+      .from('snakes_ladders_rooms')
       .update({
-        board: JSON.stringify(Array(9).fill('')),
-        winner: null,
-        round_winner: null,
-        current_round: (roomData?.current_round || 1) + 1,
-        game_status: 'playing',
-        current_player: 'player1' // إعادة التعيين إلى اللاعب الأول
+        player_positions: JSON.stringify(positions),
+        current_player_index: newGameStatus === 'finished' ? currentPlayerIndex : nextPlayerIndex,
+        game_status: newGameStatus,
+        winner: winner,
+        dice_value: diceValue
       })
       .eq('id', roomCode);
 
     if (error) {
       toast({
-        title: "❌ خطأ في إعادة الجولة",
+        title: "❌ خطأ في رمي النرد",
         description: "حاول مرة أخرى",
         variant: "destructive"
       });
     }
   };
 
-  // إعادة تعيين اللعبة
   const resetGame = async () => {
     if (!roomCode) return;
 
     const { error } = await supabase
-      .from('tic_tac_toe_rooms')
+      .from('snakes_ladders_rooms')
       .update({
-        board: JSON.stringify(Array(9).fill('')),
-        player1_score: 0,
-        player2_score: 0,
-        current_round: 1,
-        winner: null,
-        round_winner: null,
+        player_positions: JSON.stringify([0, 0, 0, 0]),
+        current_player_index: 0,
         game_status: 'playing',
-        current_player: 'player1' // إعادة التعيين إلى اللاعب الأول
+        winner: null,
+        dice_value: null
       })
       .eq('id', roomCode);
 
@@ -300,14 +306,13 @@ const TicTacToeRoom = () => {
     }
   };
 
-  // نسخ رابط الغرفة
   const shareRoom = async () => {
-    const link = `${window.location.origin}/tic-tac-toe?r=${roomCode}`;
+    const link = `${window.location.origin}/snakes-ladders?r=${roomCode}`;
     try {
       await navigator.clipboard.writeText(link);
       toast({
         title: "✅ تم نسخ الرابط!",
-        description: "شارك الرابط مع صديقك",
+        description: "شارك الرابط مع أصدقائك",
       });
     } catch (err) {
       toast({
@@ -318,13 +323,23 @@ const TicTacToeRoom = () => {
     }
   };
 
+  // دالة لتحديد إذا كانت الخلية تحتوي على سلم
+  const hasLadder = (cellNumber: number) => {
+    return Object.keys(snakesAndLadders.ladders).includes(cellNumber.toString());
+  };
+
+  // دالة لتحديد إذا كانت الخلية تحتوي على ثعبان
+  const hasSnake = (cellNumber: number) => {
+    return Object.keys(snakesAndLadders.snakes).includes(cellNumber.toString());
+  };
+
   if (!roomCode) {
     return <div>رمز الغرفة مطلوب</div>;
   }
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 flex items-center justify-center" dir="rtl">
+      <div className="min-h-screen bg-gradient-to-br from-orange-50 to-red-50 flex items-center justify-center" dir="rtl">
         <div className="text-center">
           <div className="text-4xl mb-4">⏳</div>
           <p className="text-lg text-gray-600">جارٍ تحميل الغرفة...</p>
@@ -335,12 +350,12 @@ const TicTacToeRoom = () => {
 
   if (!roomData) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 flex items-center justify-center" dir="rtl">
+      <div className="min-h-screen bg-gradient-to-br from-orange-50 to-red-50 flex items-center justify-center" dir="rtl">
         <div className="text-center">
           <div className="text-4xl mb-4">❌</div>
           <p className="text-lg text-gray-600">الغرفة غير موجودة</p>
-          <Button onClick={() => navigate('/')} className="mt-4">
-            العودة للرئيسية
+          <Button onClick={() => navigate('/snakes-home')} className="mt-4">
+            العودة
           </Button>
         </div>
       </div>
@@ -348,18 +363,18 @@ const TicTacToeRoom = () => {
   }
 
   // إذا كانت الغرفة ممتلئة والمستخدم ليس من اللاعبين
-  if (roomData.player2_name && !isHost && !isPlayer2) {
+  if (roomData.player4_name && !isHost && playerNumber === null) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 flex items-center justify-center p-4" dir="rtl">
+      <div className="min-h-screen bg-gradient-to-br from-orange-50 to-red-50 flex items-center justify-center p-4" dir="rtl">
         <Card className="w-full max-w-md">
           <CardHeader className="text-center">
             <CardTitle className="text-2xl">🚫 الغرفة ممتلئة</CardTitle>
           </CardHeader>
           <CardContent className="text-center space-y-4">
-            <p className="text-gray-600">هذه الغرفة تحتوي على لاعبين بالفعل</p>
-            <Button onClick={() => navigate('/')} className="w-full">
+            <p className="text-gray-600">هذه الغرفة تحتوي على 4 لاعبين بالفعل</p>
+            <Button onClick={() => navigate('/snakes-home')} className="w-full">
               <ArrowLeft className="ml-2 h-4 w-4" />
-              العودة للرئيسية
+              العودة
             </Button>
           </CardContent>
         </Card>
@@ -367,10 +382,10 @@ const TicTacToeRoom = () => {
     );
   }
 
-  // إذا كان اللاعب الثاني يحتاج لإدخال اسمه
-  if (isPlayer2 && !roomData.player2_name) {
+  // إذا كان اللاعب يحتاج لإدخال اسمه
+  if (!isHost && playerNumber && !roomData[`player${playerNumber}_name` as keyof SnakesLaddersRoom]) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 flex items-center justify-center p-4" dir="rtl">
+      <div className="min-h-screen bg-gradient-to-br from-orange-50 to-red-50 flex items-center justify-center p-4" dir="rtl">
         <Card className="w-full max-w-md">
           <CardHeader className="text-center">
             <CardTitle className="text-2xl">🎮 انضمام للعبة</CardTitle>
@@ -383,15 +398,15 @@ const TicTacToeRoom = () => {
                 onChange={(e) => setPlayerName(e.target.value)}
                 placeholder="أدخل اسمك هنا"
                 className="w-full p-2 border border-gray-300 rounded text-right"
-                onKeyPress={(e) => e.key === 'Enter' && joinAsPlayer2()}
+                onKeyPress={(e) => e.key === 'Enter' && joinGame()}
               />
             </div>
             <Button 
-              onClick={joinAsPlayer2} 
+              onClick={joinGame} 
               className="w-full"
               disabled={!playerName.trim()}
             >
-              انضم للعبة
+              انضم كلاعب {playerNumber}
             </Button>
           </CardContent>
         </Card>
@@ -399,137 +414,231 @@ const TicTacToeRoom = () => {
     );
   }
 
-  const currentBoard = JSON.parse(roomData.board || '["", "", "", "", "", "", "", "", ""]');
-  const isGameComplete = roomData.game_status === 'game_complete';
-  const isRoundComplete = roomData.game_status === 'round_complete';
+  const positions = JSON.parse(roomData.player_positions || '[0,0,0,0]');
+  const players = [
+    { name: roomData.player1_name, position: positions[0], active: !!roomData.player1_name, color: 'bg-red-500', emoji: '🔴' },
+    { name: roomData.player2_name, position: positions[1], active: !!roomData.player2_name, color: 'bg-blue-500', emoji: '🔵' },
+    { name: roomData.player3_name, position: positions[2], active: !!roomData.player3_name, color: 'bg-green-500', emoji: '🟢' },
+    { name: roomData.player4_name, position: positions[3], active: !!roomData.player4_name, color: 'bg-yellow-500', emoji: '🟡' },
+  ];
+
+  const activePlayers = players.filter(player => player.active);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 dark:from-gray-900 dark:to-gray-800 p-4" dir="rtl">
-      <div className="max-w-md mx-auto space-y-6">
+    <div className="min-h-screen bg-gradient-to-br from-orange-50 to-red-50 dark:from-gray-900 dark:to-gray-800 p-4" dir="rtl">
+      <div className="max-w-4xl mx-auto space-y-6">
         {/* شريط التنقل */}
         <div className="flex justify-between items-center">
-          <div className="flex gap-2">
-            <Button 
-              onClick={() => navigate('/')} 
-              variant="outline" 
-              size="sm"
-            >
-              <ArrowLeft className="ml-2 h-4 w-4" />
-              الرئيسية
-            </Button>
-            
-            {(isHost || !isPlayer2) && (
-              <Button onClick={shareRoom} variant="outline" size="sm">
-                <Copy className="ml-2 h-4 w-4" />
-                مشاركة الرابط
-              </Button>
-            )}
-          </div>
+          <Button 
+            onClick={() => navigate('/snakes-home')} 
+            variant="outline" 
+            size="sm"
+          >
+            <ArrowLeft className="ml-2 h-4 w-4" />
+            العودة
+          </Button>
           
-          <ThemeToggle />
+          {(isHost || playerNumber === 1) && (
+            <Button onClick={shareRoom} variant="outline" size="sm">
+              <Copy className="ml-2 h-4 w-4" />
+              مشاركة الرابط
+            </Button>
+          )}
         </div>
 
-        {/* النتيجة */}
+        {/* معلومات اللعبة */}
         <Card>
           <CardContent className="pt-6">
             <div className="text-center space-y-2">
-              <h2 className="text-xl font-bold">النتيجة</h2>
-              <div className="flex justify-center space-x-8 text-lg font-semibold">
-                <div className={`text-center ${roomData.current_player === 'player1' && roomData.game_status === 'playing' ? 'ring-2 ring-blue-500 rounded-lg p-2' : ''}`}>
-                  <div className="text-2xl font-bold text-blue-600">{roomData.player1_score || 0}</div>
-                  <div className="text-sm text-gray-600">{roomData.player1_name}</div>
-                </div>
-                <div className="text-3xl">VS</div>
-                <div className={`text-center ${roomData.current_player === 'player2' && roomData.game_status === 'playing' ? 'ring-2 ring-red-500 rounded-lg p-2' : ''}`}>
-                  <div className="text-2xl font-bold text-red-600">{roomData.player2_score || 0}</div>
-                  <div className="text-sm text-gray-600">{roomData.player2_name || 'في الانتظار...'}</div>
-                </div>
+              <h2 className="text-xl font-bold">🐍🪜 السلم والثعبان</h2>
+              <div className="flex justify-center space-x-6">
+                {players.map((player, index) => (
+                  player.active && (
+                    <div 
+                      key={index} 
+                      className={`text-center p-3 rounded-lg ${
+                        roomData.current_player_index === index && roomData.game_status === 'playing' 
+                          ? 'bg-orange-100 dark:bg-orange-900' 
+                          : 'bg-gray-100 dark:bg-gray-800'
+                      }`}
+                    >
+                      <div className="text-lg font-semibold">{player.name}</div>
+                      <div className="text-sm">المربع: {player.position}</div>
+                      <div className="text-xs text-gray-500">لاعب {index + 1}</div>
+                    </div>
+                  )
+                ))}
               </div>
-              <div className="text-sm text-gray-500">الجولة {roomData.current_round || 1}</div>
+              
               {roomData.game_status === 'playing' && (
                 <div className="text-sm text-green-600 font-medium">
-                  دور اللاعب: {roomData.current_player === 'player1' ? roomData.player1_name : roomData.player2_name}
+                  دور: {players[roomData.current_player_index]?.name}
+                  {roomData.dice_value && ` - النرد: ${roomData.dice_value}`}
+                </div>
+              )}
+              
+              {roomData.game_status === 'finished' && roomData.winner && (
+                <div className="p-4 bg-green-100 dark:bg-green-900 rounded-lg">
+                  <p className="text-lg font-semibold">🎉 الفائز: {roomData.winner}</p>
                 </div>
               )}
             </div>
           </CardContent>
         </Card>
 
-        {/* انتظار اللاعب الثاني */}
-        {roomData.game_status === 'waiting' && (
-          <Card>
-            <CardContent className="pt-6 text-center">
-              <div className="text-4xl mb-4">⏳</div>
-              <p className="text-lg font-medium">في انتظار اللاعب الثاني...</p>
-              <p className="text-sm text-gray-600 mt-2">شارك الرابط مع صديقك</p>
-            </CardContent>
-          </Card>
-        )}
-
         {/* لوحة اللعبة */}
-        {(roomData.game_status === 'playing' || isRoundComplete || isGameComplete) && (
-          <Card>
-            <CardHeader className="text-center">
-              <CardTitle>
-                {isGameComplete ? '🎉 نهاية اللعبة!' : 
-                 isRoundComplete ? '✅ نهاية الجولة!' : 
-                 '❌⭕ دورك!'}
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-3 gap-2 mb-4">
-                {currentBoard.map((cell, index) => (
-                  <Button
-                    key={index}
-                    className={`w-full h-16 text-2xl font-bold ${
-                      cell === 'X' ? 'bg-blue-500 text-white hover:bg-blue-600' :
-                      cell === 'O' ? 'bg-red-500 text-white hover:bg-red-600' :
-                      'bg-gray-100 hover:bg-gray-200'
-                    }`}
-                    onClick={() => roomData.game_status === 'playing' && handleCellClick(index)}
-                    disabled={roomData.game_status !== 'playing' || !!cell}
-                  >
-                    {cell}
-                  </Button>
-                ))}
+        <Card>
+          <CardHeader className="text-center">
+            <CardTitle>
+              {roomData.game_status === 'waiting' ? '⏳ في انتظار اللاعبين...' : 
+               roomData.game_status === 'finished' ? '🎉 نهاية اللعبة!' : 
+               '🎲 دورك!'}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-10 gap-1 mb-4 bg-white p-2 rounded-lg shadow-inner mx-auto" style={{ maxWidth: '500px' }}>
+              {reversedBoardLayout.map((row, rowIndex) => (
+                row.map((cellNumber, colIndex) => {
+                  const playersHere = players.filter(player => 
+                    player.active && player.position === cellNumber
+                  );
+                  
+                  const isLadder = hasLadder(cellNumber);
+                  const isSnake = hasSnake(cellNumber);
+                  
+                  // تحديد اتجاه الصف (يمين لليسار أو يسار لليمين)
+                  const isRightToLeft = rowIndex % 2 !== 0;
+                  
+                  return (
+                    <div
+                      key={cellNumber}
+                      className={`w-10 h-10 border border-gray-300 flex items-center justify-center relative text-xs font-medium ${
+                        rowIndex % 2 === 0 
+                          ? (colIndex % 2 === 0 ? 'bg-blue-100' : 'bg-blue-50')
+                          : (colIndex % 2 === 0 ? 'bg-blue-50' : 'bg-blue-100')
+                      }`}
+                    >
+                      <span className="absolute top-0 left-0 text-[8px] p-1">{cellNumber}</span>
+                      
+                      {isLadder && (
+                        <div className="absolute bottom-0 right-0 text-lg" title={`سلم إلى ${snakesAndLadders.ladders[cellNumber as keyof typeof snakesAndLadders.ladders]}`}>
+                          🪜
+                        </div>
+                      )}
+                      
+                      {isSnake && (
+                        <div className="absolute bottom-0 right-0 text-lg" title={`ثعبان إلى ${snakesAndLadders.snakes[cellNumber as keyof typeof snakesAndLadders.snakes]}`}>
+                          🐍
+                        </div>
+                      )}
+                      
+                      {playersHere.length > 0 && (
+                        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 flex">
+                          {playersHere.slice(0, 2).map((player, idx) => (
+                            <div
+                              key={idx}
+                              className={`w-4 h-4 rounded-full ${player.color} border border-white`}
+                              title={player.name}
+                            />
+                          ))}
+                          {playersHere.length > 2 && (
+                            <div className="w-4 h-4 rounded-full bg-gray-500 text-white text-[8px] flex items-center justify-center border border-white">
+                              +{playersHere.length - 2}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })
+              ))}
+            </div>
+
+            {roomData.game_status === 'playing' && (
+              <div className="text-center">
+                <Button 
+                  onClick={rollDice} 
+                  className="text-lg py-4 px-8 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white"
+                  disabled={playerNumber !== roomData.current_player_index + 1}
+                >
+                  🎲 رمي النرد
+                </Button>
               </div>
+            )}
 
-              {(isRoundComplete || isGameComplete) && roomData.winner && (
-                <div className="text-center p-4 bg-green-100 rounded-lg">
-                  <p className="text-lg font-semibold">
-                    {roomData.winner === 'tie' ? '🤝 تعادل!' : 
-                     `🎉 الفائز: ${roomData.winner === 'player1' ? roomData.player1_name : roomData.player2_name}`}
-                  </p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        )}
+            {roomData.game_status === 'finished' && (
+              <div className="text-center">
+                <Button onClick={resetGame} className="bg-gradient-to-r from-green-500 to-teal-500 hover:from-green-600 hover:to-teal-600 text-white">
+                  <RotateCcw className="ml-2 h-4 w-4" />
+                  لعبة جديدة
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
-        {/* أزرار التحكم */}
-        {(isRoundComplete || isGameComplete) && (
-          <div className="text-center space-x-2">
-            <Button 
-              onClick={resetRound} 
-              disabled={isGameComplete}
-              className="bg-blue-600 hover:bg-blue-700"
-            >
-              <RotateCcw className="ml-2 h-4 w-4" />
-              الجولة التالية
-            </Button>
-            
-            <Button 
-              onClick={resetGame} 
-              className="bg-green-600 hover:bg-green-700"
-            >
-              <RotateCcw className="ml-2 h-4 w-4" />
-              لعبة جديدة
-            </Button>
-          </div>
-        )}
+        {/* معلومات اللاعبين */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center">
+              <Users className="ml-2 h-5 w-5" />
+              اللاعبون ({activePlayers.length}/4)
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {players.map((player, index) => (
+                player.active && (
+                  <div key={index} className="flex justify-between items-center p-2 bg-gray-100 dark:bg-gray-800 rounded">
+                    <div className="flex items-center">
+                      <div className={`w-4 h-4 rounded-full ${player.color} mr-2`}></div>
+                      <span>{player.name} (لاعب {index + 1})</span>
+                    </div>
+                    <span className="font-semibold">المربع: {player.position}</span>
+                  </div>
+                )
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* مفتاح الرموز */}
+        <Card>
+          <CardHeader>
+            <CardTitle>مفتاح الرموز</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="flex items-center">
+                <span className="text-2xl mr-2">🪜</span>
+                <span>سلم - يصعدك لمربع أعلى</span>
+              </div>
+              <div className="flex items-center">
+                <span className="text-2xl mr-2">🐍</span>
+                <span>ثعبان - ينزلك لمربع أدنى</span>
+              </div>
+              <div className="flex items-center">
+                <div className="w-4 h-4 rounded-full bg-red-500 mr-2"></div>
+                <span>اللاعب الأول</span>
+              </div>
+              <div className="flex items-center">
+                <div className="w-4 h-4 rounded-full bg-blue-500 mr-2"></div>
+                <span>اللاعب الثاني</span>
+              </div>
+              <div className="flex items-center">
+                <div className="w-4 h-4 rounded-full bg-green-500 mr-2"></div>
+                <span>اللاعب الثالث</span>
+              </div>
+              <div className="flex items-center">
+                <div className="w-4 h-4 rounded-full bg-yellow-500 mr-2"></div>
+                <span>اللاعب الرابع</span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );
 };
 
-export default TicTacToeRoom;
+export default SnakesLaddersRoom;
