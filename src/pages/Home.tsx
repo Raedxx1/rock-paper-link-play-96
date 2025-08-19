@@ -29,23 +29,23 @@ const Home = () => {
 
     try {
       const { data, error } = await supabase
-        .from('tic_tac_toe_rooms')
+        .from('tic_tac_toe_rooms') // استخدام الجدول الصحيح
         .insert({
           id: roomCode,
           board: JSON.stringify(Array(9).fill('')), // مصفوفة فارغة للوحة
-          current_player: 'X',  // اللاعب الأول
-          winner: null,  // لا يوجد فائز بعد
-          game_status: 'waiting',  // حالة اللعبة
-          player1_name: "مضيف XO",  // اسم اللاعب الأول
-          player1_score: 0,  // النتيجة الابتدائية
-          player2_score: 0,  // النتيجة الابتدائية
-          current_round: 1,  // الجولة الحالية
-          round_winner: null,  // فائز الجولة
-          player2_name: null,  // اسم اللاعب الثاني
-          player1_choice: null,  // اختيار اللاعب الأول
-          player2_choice: null,  // اختيار اللاعب الثاني
-          player2_session: null,  // جلسة اللاعب الثاني
-          game_type: 'tic_tac_toe'  // نوع اللعبة
+          current_player: 'X',
+          winner: null,
+          game_status: 'waiting',
+          player1_name: "مضيف XO",
+          player1_score: 0,
+          player2_score: 0,
+          current_round: 1,
+          round_winner: null,
+          player2_name: null,
+          player1_choice: null,
+          player2_choice: null,
+          player2_session: null,
+          game_type: 'tic_tac_toe'
         })
         .select();
 
@@ -99,7 +99,7 @@ const Home = () => {
     try {
       // التحقق من وجود الغرفة
       const { data, error } = await supabase
-        .from('tic_tac_toe_rooms')
+        .from('tic_tac_toe_rooms') // استخدام الجدول الصحيح
         .select('id, game_status')
         .eq('id', joinRoomCode.trim())
         .single();
