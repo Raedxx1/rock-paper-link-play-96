@@ -42,23 +42,22 @@ const SnakesLaddersRoom = () => {
   // تعريف السلالم والثعابين بناءً على الخريطة
   const snakesAndLadders = {
     ladders: {
-      1: 38,
-      4: 14,
-      9: 31,
-      21: 42,
-      28: 84,
-      51: 67,
-      80: 100,
-      71: 91
+      4: 25,
+      13: 46,
+      33: 49,
+      42: 63,
+      50: 69,
+      62: 81,
+      74: 92
     },
     snakes: {
-      17: 7,
-      54: 34,
-      62: 19,
-      64: 60,
-      87: 24,
-      93: 73,
-      98: 79,
+      27: 5,
+      40: 3,
+      43: 18,
+      54: 31,
+      66: 45,
+      76: 58,
+      89: 53,
       99: 41
     }
   };
@@ -584,4 +583,77 @@ const SnakesLaddersRoom = () => {
 
             {roomData.game_status === 'finished' && (
               <div className="text-center">
-  
+                <Button onClick={resetGame} className="bg-gradient-to-r from-green-500 to-teal-500 hover:from-green-600 hover:to-teal-600 text-white">
+                  <RotateCcw className="ml-2 h-4 w-4" />
+                  لعبة جديدة
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* معلومات اللاعبين */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center">
+              <Users className="ml-2 h-5 w-5" />
+              اللاعبون ({activePlayers.length}/4)
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {players.map((player, index) => (
+                player.active && (
+                  <div key={index} className="flex justify-between items-center p-2 bg-gray-100 dark:bg-gray-800 rounded">
+                    <div className="flex items-center">
+                      <div className={`w-4 h-4 rounded-full ${player.color} mr-2`}></div>
+                      <span>{player.name} (لاعب {index + 1})</span>
+                    </div>
+                    <span className="font-semibold">المربع: {player.position}</span>
+                  </div>
+                )
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* مفتاح الرموز */}
+        <Card>
+          <CardHeader>
+            <CardTitle>مفتاح الرموز</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="flex items-center">
+                <span className="text-2xl mr-2">🪜</span>
+                <span>سلم - يصعدك لمربع أعلى</span>
+              </div>
+              <div className="flex items-center">
+                <span className="text-2xl mr-2">🐍</span>
+                <span>ثعبان - ينزلك لمربع أدنى</span>
+              </div>
+              <div className="flex items-center">
+                <div className="w-4 h-4 rounded-full bg-red-500 mr-2"></div>
+                <span>اللاعب الأول</span>
+              </div>
+              <div className="flex items-center">
+                <div className="w-4 h-4 rounded-full bg-blue-500 mr-2"></div>
+                <span>اللاعب الثاني</span>
+              </div>
+              <div className="flex items-center">
+                <div className="w-4 h-4 rounded-full bg-green-500 mr-2"></div>
+                <span>اللاعب الثالث</span>
+              </div>
+              <div className="flex items-center">
+                <div className="w-4 h-4 rounded-full bg-yellow-500 mr-2"></div>
+                <span>اللاعب الرابع</span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+};
+
+export default SnakesLaddersRoom;
