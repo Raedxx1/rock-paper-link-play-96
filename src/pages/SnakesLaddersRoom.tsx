@@ -39,14 +39,64 @@ const SnakesLaddersRoom = () => {
   
   const [sessionId] = useState(() => `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`);
 
-  // تعريف السلالم والثعابين
+  // تعريف السلالم والثعابين بناءً على الخريطة
   const snakesAndLadders = {
     ladders: {
-      4: 25, 13: 46, 33: 49, 42: 63, 50: 69, 62: 81, 74: 92
+      1: 38,
+      4: 14,
+      9: 31,
+      21: 42,
+      28: 84,
+      51: 67,
+      80: 100,
+      71: 91
     },
     snakes: {
-      27: 5, 40: 3, 43: 18, 54: 31, 66: 45, 76: 58, 89: 53, 99: 41
+      17: 7,
+      54: 34,
+      62: 19,
+      64: 60,
+      87: 24,
+      93: 73,
+      98: 79,
+      99: 41
     }
+  };
+
+  // إحداثيات الخلايا على اللوحة (10x10)
+  const boardLayout = [
+    // الصف 1 (الأسفل)
+    [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+    // الصف 2
+    [20, 19, 18, 17, 16, 15, 14, 13, 12, 11],
+    // الصف 3
+    [21, 22, 23, 24, 25, 26, 27, 28, 29, 30],
+    // الصف 4
+    [40, 39, 38, 37, 36, 35, 34, 33, 32, 31],
+    // الصف 5
+    [41, 42, 43, 44, 45, 46, 47, 48, 49, 50],
+    // الصف 6
+    [60, 59, 58, 57, 56, 55, 54, 53, 52, 51],
+    // الصف 7
+    [61, 62, 63, 64, 65, 66, 67, 68, 69, 70],
+    // الصف 8
+    [80, 79, 78, 77, 76, 75, 74, 73, 72, 71],
+    // الصف 9
+    [81, 82, 83, 84, 85, 86, 87, 88, 89, 90],
+    // الصف 10 (الأعلى)
+    [100, 99, 98, 97, 96, 95, 94, 93, 92, 91]
+  ];
+
+  // دالة للعثور على إحداثيات الخلية
+  const findCellPosition = (cellNumber: number) => {
+    for (let row = 0; row < boardLayout.length; row++) {
+      for (let col = 0; col < boardLayout[row].length; col++) {
+        if (boardLayout[row][col] === cellNumber) {
+          return { row, col };
+        }
+      }
+    }
+    return { row: 0, col: 0 };
   };
 
   const fetchRoomData = async () => {
@@ -172,42 +222,43 @@ const SnakesLaddersRoom = () => {
     const positions = JSON.parse(roomData.player_positions || '[0,0,0,0]');
     
     // تحديث موقع اللاعب الحالي
-    positions[roomData.current_player_index] += diceValue;
+    const currentPlayerIndex = roomData.current_player_index;
+    positions[currentPlayerIndex] += diceValue;
     
     // التحقق من الفائز
     let newGameStatus = roomData.game_status;
     let winner = null;
     
-    if (positions[roomData.current_player_index] >= 99) {
-      positions[roomData.current_player_index] = 99;
+    if (positions[currentPlayerIndex] >= 100) {
+      positions[currentPlayerIndex] = 100;
       newGameStatus = 'finished';
-      winner = roomData[`player${roomData.current_player_index + 1}_name` as keyof SnakesLaddersRoom];
+      winner = roomData[`player${currentPlayerIndex + 1}_name` as keyof SnakesLaddersRoom];
     }
     
     // تطبيق قواعد السلم والثعبان
-    const board = JSON.parse(roomData.board_state || '[]');
-    const currentPosition = positions[roomData.current_player_index];
+    const currentPosition = positions[currentPlayerIndex];
     
-    if (currentPosition < 100 && board[currentPosition] !== 0) {
-      if (board[currentPosition] > 0) {
-        // سلم
-        positions[roomData.current_player_index] = board[currentPosition];
-        toast({
-          title: "🪜 صعدت سلم!",
-          description: `تقدمت إلى المربع ${board[currentPosition] + 1}`
-        });
-      } else {
-        // ثعبان
-        positions[roomData.current_player_index] = Math.abs(board[currentPosition]);
-        toast({
-          title: "🐍 وقعت في ثعبان!",
-          description: `تراجعت إلى المربع ${Math.abs(board[currentPosition]) + 1}`
-        });
-      }
+    // التحقق من السلالم
+    if (snakesAndLadders.ladders[currentPosition as keyof typeof snakesAndLadders.ladders]) {
+      const ladderTarget = snakesAndLadders.ladders[currentPosition as keyof typeof snakesAndLadders.ladders];
+      positions[currentPlayerIndex] = ladderTarget;
+      toast({
+        title: "🪜 صعدت سلم!",
+        description: `تقدمت إلى المربع ${ladderTarget}`
+      });
+    }
+    // التحقق من الثعابين
+    else if (snakesAndLadders.snakes[currentPosition as keyof typeof snakesAndLadders.snakes]) {
+      const snakeTarget = snakesAndLadders.snakes[currentPosition as keyof typeof snakesAndLadders.snakes];
+      positions[currentPlayerIndex] = snakeTarget;
+      toast({
+        title: "🐍 وقعت في ثعبان!",
+        description: `تراجعت إلى المربع ${snakeTarget}`
+      });
     }
     
     // حساب اللاعب التالي
-    let nextPlayerIndex = (roomData.current_player_index + 1) % 4;
+    let nextPlayerIndex = (currentPlayerIndex + 1) % 4;
     
     // تخطي اللاعبين غير النشطين
     const players = [
@@ -217,7 +268,7 @@ const SnakesLaddersRoom = () => {
       roomData.player4_name
     ];
     
-    while (!players[nextPlayerIndex] && nextPlayerIndex !== roomData.current_player_index) {
+    while (!players[nextPlayerIndex] && nextPlayerIndex !== currentPlayerIndex) {
       nextPlayerIndex = (nextPlayerIndex + 1) % 4;
     }
 
@@ -225,7 +276,7 @@ const SnakesLaddersRoom = () => {
       .from('snakes_ladders_rooms')
       .update({
         player_positions: JSON.stringify(positions),
-        current_player_index: newGameStatus === 'finished' ? roomData.current_player_index : nextPlayerIndex,
+        current_player_index: newGameStatus === 'finished' ? currentPlayerIndex : nextPlayerIndex,
         game_status: newGameStatus,
         winner: winner,
         dice_value: diceValue
@@ -281,35 +332,23 @@ const SnakesLaddersRoom = () => {
     }
   };
 
-  // دالة لتحديد لون الخلية بناءً على موقعها
-  const getCellColor = (cellIndex: number) => {
-    const row = Math.floor(cellIndex / 10);
-    if (row % 2 === 0) {
-      return cellIndex % 2 === 0 ? 'bg-blue-100' : 'bg-blue-50';
-    } else {
-      return cellIndex % 2 === 0 ? 'bg-blue-50' : 'bg-blue-100';
-    }
+  // دالة لتحديد إذا كانت الخلية تحتوي على سلم
+  const hasLadder = (cellNumber: number) => {
+    return Object.keys(snakesAndLadders.ladders).includes(cellNumber.toString());
   };
 
-  // دالة للتحقق إذا كانت الخلية تحتوي على سلم أو ثعبان
-  const getCellSpecialContent = (cellIndex: number) => {
-    // التحقق من السلالم
-    if (Object.keys(snakesAndLadders.ladders).includes(cellIndex.toString())) {
-      return {
-        type: 'ladder',
-        target: snakesAndLadders.ladders[cellIndex as keyof typeof snakesAndLadders.ladders]
-      };
+  // دالة لتحديد إذا كانت الخلية تحتوي على ثعبان
+  const hasSnake = (cellNumber: number) => {
+    return Object.keys(snakesAndLadders.snakes).includes(cellNumber.toString());
+  };
+
+  // دالة للحصول على لون الخلية بناءً على موقعها
+  const getCellColor = (row: number, col: number) => {
+    if (row % 2 === 0) {
+      return col % 2 === 0 ? 'bg-blue-100' : 'bg-blue-50';
+    } else {
+      return col % 2 === 0 ? 'bg-blue-50' : 'bg-blue-100';
     }
-    
-    // التحقق من الثعابين
-    if (Object.keys(snakesAndLadders.snakes).includes(cellIndex.toString())) {
-      return {
-        type: 'snake',
-        target: snakesAndLadders.snakes[cellIndex as keyof typeof snakesAndLadders.snakes]
-      };
-    }
-    
-    return null;
   };
 
   if (!roomCode) {
@@ -395,10 +434,10 @@ const SnakesLaddersRoom = () => {
 
   const positions = JSON.parse(roomData.player_positions || '[0,0,0,0]');
   const players = [
-    { name: roomData.player1_name, position: positions[0], active: !!roomData.player1_name, color: 'bg-red-500' },
-    { name: roomData.player2_name, position: positions[1], active: !!roomData.player2_name, color: 'bg-blue-500' },
-    { name: roomData.player3_name, position: positions[2], active: !!roomData.player3_name, color: 'bg-green-500' },
-    { name: roomData.player4_name, position: positions[3], active: !!roomData.player4_name, color: 'bg-yellow-500' },
+    { name: roomData.player1_name, position: positions[0], active: !!roomData.player1_name, color: 'bg-red-500', emoji: '🔴' },
+    { name: roomData.player2_name, position: positions[1], active: !!roomData.player2_name, color: 'bg-blue-500', emoji: '🔵' },
+    { name: roomData.player3_name, position: positions[2], active: !!roomData.player3_name, color: 'bg-green-500', emoji: '🟢' },
+    { name: roomData.player4_name, position: positions[3], active: !!roomData.player4_name, color: 'bg-yellow-500', emoji: '🟡' },
   ];
 
   const activePlayers = players.filter(player => player.active);
@@ -442,7 +481,7 @@ const SnakesLaddersRoom = () => {
                       }`}
                     >
                       <div className="text-lg font-semibold">{player.name}</div>
-                      <div className="text-sm">المربع: {player.position + 1}</div>
+                      <div className="text-sm">المربع: {player.position}</div>
                       <div className="text-xs text-gray-500">لاعب {index + 1}</div>
                     </div>
                   )
@@ -475,34 +514,55 @@ const SnakesLaddersRoom = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-10 gap-1 mb-4 bg-white p-2 rounded-lg shadow-inner">
-              {Array.from({ length: 100 }).map((_, index) => {
-                const cellIndex = 99 - index; // لجعل المربع 1 في الأسفل
-                const playerHere = players.findIndex(player => 
-                  player.active && player.position === cellIndex
-                );
-                
-                const specialContent = getCellSpecialContent(cellIndex);
-                
-                return (
-                  <div
-                    key={cellIndex}
-                    className={`w-10 h-10 border border-gray-300 flex items-center justify-center relative text-xs font-medium ${getCellColor(cellIndex)}`}
-                  >
-                    <span className="absolute top-0 left-0 text-[8px] p-1">{cellIndex + 1}</span>
-                    
-                    {specialContent && (
-                      <div className="absolute bottom-0 right-0 text-lg">
-                        {specialContent.type === 'ladder' ? '🪜' : '🐍'}
-                      </div>
-                    )}
-                    
-                    {playerHere !== -1 && (
-                      <div className={`absolute w-5 h-5 rounded-full ${players[playerHere].color}`}></div>
-                    )}
-                  </div>
-                );
-              })}
+            <div className="grid grid-cols-10 gap-1 mb-4 bg-white p-2 rounded-lg shadow-inner mx-auto" style={{ maxWidth: '500px' }}>
+              {boardLayout.map((row, rowIndex) => (
+                row.map((cellNumber, colIndex) => {
+                  const playersHere = players.filter(player => 
+                    player.active && player.position === cellNumber
+                  );
+                  
+                  const isLadder = hasLadder(cellNumber);
+                  const isSnake = hasSnake(cellNumber);
+                  
+                  return (
+                    <div
+                      key={cellNumber}
+                      className={`w-10 h-10 border border-gray-300 flex items-center justify-center relative text-xs font-medium ${getCellColor(rowIndex, colIndex)}`}
+                    >
+                      <span className="absolute top-0 left-0 text-[8px] p-1">{cellNumber}</span>
+                      
+                      {isLadder && (
+                        <div className="absolute bottom-0 right-0 text-lg" title={`سلم إلى ${snakesAndLadders.ladders[cellNumber as keyof typeof snakesAndLadders.ladders]}`}>
+                          🪜
+                        </div>
+                      )}
+                      
+                      {isSnake && (
+                        <div className="absolute bottom-0 right-0 text-lg" title={`ثعبان إلى ${snakesAndLadders.snakes[cellNumber as keyof typeof snakesAndLadders.snakes]}`}>
+                          🐍
+                        </div>
+                      )}
+                      
+                      {playersHere.length > 0 && (
+                        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 flex">
+                          {playersHere.slice(0, 2).map((player, idx) => (
+                            <div
+                              key={idx}
+                              className={`w-4 h-4 rounded-full ${player.color} border border-white`}
+                              title={player.name}
+                            />
+                          ))}
+                          {playersHere.length > 2 && (
+                            <div className="w-4 h-4 rounded-full bg-gray-500 text-white text-[8px] flex items-center justify-center border border-white">
+                              +{playersHere.length - 2}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })
+              ))}
             </div>
 
             {roomData.game_status === 'playing' && (
@@ -545,7 +605,7 @@ const SnakesLaddersRoom = () => {
                       <div className={`w-4 h-4 rounded-full ${player.color} mr-2`}></div>
                       <span>{player.name} (لاعب {index + 1})</span>
                     </div>
-                    <span className="font-semibold">المربع: {player.position + 1}</span>
+                    <span className="font-semibold">المربع: {player.position}</span>
                   </div>
                 )
               ))}
