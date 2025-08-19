@@ -1,6 +1,6 @@
 import { Routes, Route } from 'react-router-dom';
 import GameRoom from './pages/GameRoom';
-import TicTacToeRoom from './pages/TicTacToeRoom';
+import TicTacToeRoom from './pages/Home';
 import Index from './pages/Index';
 import Home from './pages/Home'; // تأكد من استيراد Home
 
