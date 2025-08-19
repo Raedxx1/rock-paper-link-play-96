@@ -29,11 +29,10 @@ const Home = () => {
 
     try {
       const { data, error } = await supabase
-        .from('tic_tac_toe_rooms') // استخدام الجدول الصحيح
+        .from('tic_tac_toe_rooms')
         .insert({
           id: roomCode,
-          board: JSON.stringify(Array(9).fill('')), // مصفوفة فارغة للوحة
-          current_player: 'X',
+          board: JSON.stringify(Array(9).fill('')),
           winner: null,
           game_status: 'waiting',
           player1_name: "مضيف XO",
@@ -42,15 +41,11 @@ const Home = () => {
           current_round: 1,
           round_winner: null,
           player2_name: null,
-          player1_choice: null,
-          player2_choice: null,
-          player2_session: null,
-          game_type: 'tic_tac_toe'
+          player2_session_id: null, // ✅ جديد
         })
         .select();
 
       if (error) {
-        console.error('Error details:', error);
         toast({
           title: "❌ خطأ في إنشاء الغرفة",
           description: `تفاصيل الخطأ: ${error.message}`,
@@ -60,21 +55,17 @@ const Home = () => {
         return;
       }
 
-      console.log('Room created:', data);
-      
       // نسخ الرابط إلى الحافظة
       const roomLink = `${window.location.origin}/tic-tac-toe?r=${roomCode}&host=true`;
       navigator.clipboard.writeText(roomLink);
-      
+
       toast({
         title: "✅ تم نسخ رابط الغرفة",
         description: "شارك الرابط مع صديقك للانضمام",
       });
 
-      // التوجيه إلى الغرفة
       navigate(`/tic-tac-toe?r=${roomCode}&host=true`);
     } catch (error) {
-      console.error('Error in connection:', error);
       toast({
         title: "❌ فشل في الاتصال",
         description: 'تأكد من اتصالك بالإنترنت',
@@ -97,9 +88,8 @@ const Home = () => {
     setJoinLoading(true);
 
     try {
-      // التحقق من وجود الغرفة
       const { data, error } = await supabase
-        .from('tic_tac_toe_rooms') // استخدام الجدول الصحيح
+        .from('tic_tac_toe_rooms')
         .select('id, game_status')
         .eq('id', joinRoomCode.trim())
         .single();
@@ -114,7 +104,7 @@ const Home = () => {
         return;
       }
 
-      if (data.game_status === 'finished') {
+      if (data.game_status === 'game_complete') {
         toast({
           title: "❌ اللعبة انتهت",
           description: "هذه الغرفة مغلقة، أنشئ غرفة جديدة",
@@ -124,10 +114,8 @@ const Home = () => {
         return;
       }
 
-      // التوجيه إلى الغرفة
       navigate(`/tic-tac-toe?r=${joinRoomCode.trim()}&host=false`);
     } catch (error) {
-      console.error('Error joining room:', error);
       toast({
         title: "❌ فشل في الانضمام",
         description: 'تأكد من اتصالك بالإنترنت',
