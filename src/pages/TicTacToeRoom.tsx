@@ -19,6 +19,7 @@ interface TicTacToeRoom {
   game_status: 'waiting' | 'playing' | 'round_complete' | 'game_complete';
   winner: 'player1' | 'player2' | 'tie' | null;
   round_winner: 'player1' | 'player2' | 'tie' | null;
+  current_player: 'player1' | 'player2'; // تمت إضافة هذا الحقل
 }
 
 const TicTacToeRoom = () => {
@@ -126,7 +127,8 @@ const TicTacToeRoom = () => {
       .update({
         player2_name: playerName.trim(),
         player2_session_id: sessionId,
-        game_status: 'playing'
+        game_status: 'playing',
+        current_player: 'player1' // يبدأ اللاعب الأول بعد الانضمام
       })
       .eq('id', roomCode)
       .is('player2_name', null)
@@ -182,6 +184,19 @@ const TicTacToeRoom = () => {
       return;
     }
 
+    // التحقق من أن هذا اللاعب هو من يحق له اللعب الآن
+    const isPlayer1Turn = roomData.current_player === 'player1';
+    const isPlayer2Turn = roomData.current_player === 'player2';
+    
+    if ((isHost && !isPlayer1Turn) || (!isHost && isPlayer2 && !isPlayer2Turn) || (!isHost && !isPlayer2 && !isPlayer1Turn)) {
+      toast({
+        title: "⏳ ليس دورك الآن",
+        description: "انتظر دورك للعب",
+        variant: "destructive"
+      });
+      return;
+    }
+
     const currentBoard = JSON.parse(roomData.board || '["", "", "", "", "", "", "", "", ""]');
     
     // التحقق إذا كانت الخلية محجوزة بالفعل
@@ -195,7 +210,8 @@ const TicTacToeRoom = () => {
     const winner = checkWinner(currentBoard);
 
     let updateData: any = {
-      board: JSON.stringify(currentBoard)
+      board: JSON.stringify(currentBoard),
+      current_player: roomData.current_player === 'player1' ? 'player2' : 'player1' // تغيير الدور
     };
 
     if (winner) {
@@ -243,7 +259,8 @@ const TicTacToeRoom = () => {
         winner: null,
         round_winner: null,
         current_round: (roomData?.current_round || 1) + 1,
-        game_status: 'playing'
+        game_status: 'playing',
+        current_player: 'player1' // إعادة التعيين إلى اللاعب الأول
       })
       .eq('id', roomCode);
 
@@ -269,7 +286,8 @@ const TicTacToeRoom = () => {
         current_round: 1,
         winner: null,
         round_winner: null,
-        game_status: 'playing'
+        game_status: 'playing',
+        current_player: 'player1' // إعادة التعيين إلى اللاعب الأول
       })
       .eq('id', roomCode);
 
@@ -417,17 +435,22 @@ const TicTacToeRoom = () => {
             <div className="text-center space-y-2">
               <h2 className="text-xl font-bold">النتيجة</h2>
               <div className="flex justify-center space-x-8 text-lg font-semibold">
-                <div className="text-center">
+                <div className={`text-center ${roomData.current_player === 'player1' && roomData.game_status === 'playing' ? 'ring-2 ring-blue-500 rounded-lg p-2' : ''}`}>
                   <div className="text-2xl font-bold text-blue-600">{roomData.player1_score || 0}</div>
                   <div className="text-sm text-gray-600">{roomData.player1_name}</div>
                 </div>
                 <div className="text-3xl">VS</div>
-                <div className="text-center">
+                <div className={`text-center ${roomData.current_player === 'player2' && roomData.game_status === 'playing' ? 'ring-2 ring-red-500 rounded-lg p-2' : ''}`}>
                   <div className="text-2xl font-bold text-red-600">{roomData.player2_score || 0}</div>
                   <div className="text-sm text-gray-600">{roomData.player2_name || 'في الانتظار...'}</div>
                 </div>
               </div>
               <div className="text-sm text-gray-500">الجولة {roomData.current_round || 1}</div>
+              {roomData.game_status === 'playing' && (
+                <div className="text-sm text-green-600 font-medium">
+                  دور اللاعب: {roomData.current_player === 'player1' ? roomData.player1_name : roomData.player2_name}
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
