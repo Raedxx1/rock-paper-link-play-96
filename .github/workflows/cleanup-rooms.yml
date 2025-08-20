@@ -1,0 +1,17 @@
+name: Cleanup All Game Rooms
+on:
+  schedule:
+    - cron: '0 */2 * * *'  # كل ساعتين
+  workflow_dispatch:  # يسمح بالتشغيل اليدوي
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Cleanup all game rooms
+        run: |
+          curl -X POST "https://your-project-ref.supabase.co/functions/v1/cleanup-all-rooms" \
+          -H "Authorization: Bearer ${{ eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh3bmpxcGRsd3preXJneHlic2p0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQwNjI4NDgsImV4cCI6MjA2OTYzODg0OH0.-FutvUNh8MJ-zxIrCJy14lduMsxa4ji5EpybdQE3L_M }}" \
+          -H "Content-Type: application/json"
+        env:
+          SUPABASE_ANON_KEY: ${{ eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh3bmpxcGRsd3preXJneHlic2p0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQwNjI4NDgsImV4cCI6MjA2OTYzODg0OH0.-FutvUNh8MJ-zxIrCJy14lduMsxa4ji5EpybdQE3L_M }}
