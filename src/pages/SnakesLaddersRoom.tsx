@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Copy, ArrowLeft, RotateCcw, Users, MessageSquare } from 'lucide-react';
+import { Copy, ArrowLeft, RotateCcw, Users, MessageSquare, Volume2, VolumeX } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -36,12 +36,28 @@ const SnakesLaddersRoom = () => {
   const [playerName, setPlayerName] = useState('');
   const [loading, setLoading] = useState(true);
   const [playerNumber, setPlayerNumber] = useState<number | null>(null);
+  const [isMuted, setIsMuted] = useState(false);
+  const [volume, setVolume] = useState(0.5);
   
   const [sessionId] = useState(() => `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`);
   const [animatedPositions, setAnimatedPositions] = useState([0, 0, 0, 0]);
   const [isAnimating, setIsAnimating] = useState(false);
   const [gameMessages, setGameMessages] = useState([]);
   const messagesEndRef = useRef(null);
+
+  // تعريف الأصوات باستخدام المسارات العامة
+  const moveSound = '/sounds/move.mp3';
+  const winSound = '/sounds/win.mp3';
+  const ladderSound = '/sounds/ladder.mp3';
+  const snakeSound = '/sounds/snake.mp3';
+  const diceSound = '/sounds/dice.mp3';
+
+  // المراجع للأصوات
+  const moveSoundRef = useRef(new Audio(moveSound));
+  const winSoundRef = useRef(new Audio(winSound));
+  const ladderSoundRef = useRef(new Audio(ladderSound));
+  const snakeSoundRef = useRef(new Audio(snakeSound));
+  const diceSoundRef = useRef(new Audio(diceSound));
 
   // تعريف السلالم والثعابين
   const snakesAndLadders = {
@@ -63,6 +79,38 @@ const SnakesLaddersRoom = () => {
       87: 24,
       93: 73,
       98: 79
+    }
+  };
+
+  // تحديث مستوى الصوت لجميع الأصوات
+  useEffect(() => {
+    const sounds = [
+      moveSoundRef.current,
+      winSoundRef.current,
+      ladderSoundRef.current,
+      snakeSoundRef.current,
+      diceSoundRef.current
+    ];
+    
+    sounds.forEach(sound => {
+      sound.volume = isMuted ? 0 : volume;
+    });
+  }, [volume, isMuted]);
+
+  // دالة مساعدة لتشغيل الأصوات
+  const playSound = (soundRef, restart = true) => {
+    if (isMuted) return;
+    
+    try {
+      if (restart) {
+        soundRef.current.currentTime = 0;
+      }
+      soundRef.current.volume = volume;
+      soundRef.current.play().catch(error => {
+        console.log("تشغيل الصوت فشل:", error);
+      });
+    } catch (error) {
+      console.log("خطأ في تشغيل الصوت:", error);
     }
   };
 
@@ -190,6 +238,11 @@ const SnakesLaddersRoom = () => {
             }
             
             determinePlayerNumber(newData);
+
+            // تشغيل صوت الفوز إذا تم تحديد فائز
+            if (newData.winner && (!roomData || !roomData.winner)) {
+              playSound(winSoundRef);
+            }
           }
         }
       )
@@ -207,6 +260,13 @@ const SnakesLaddersRoom = () => {
     const direction = endPosition > startPosition ? 1 : -1;
     let currentStep = 0;
 
+    // تشغيل صوت الحركة عند كل خطوة
+    const playMoveSound = () => {
+      playSound(moveSoundRef);
+    };
+
+    playMoveSound(); // تشغيل الصوت عند بدء الحركة
+
     const animationInterval = setInterval(() => {
       currentStep++;
       const newPosition = startPosition + (currentStep * direction);
@@ -216,6 +276,11 @@ const SnakesLaddersRoom = () => {
         newPositions[playerIndex] = newPosition;
         return newPositions;
       });
+
+      // تشغيل صوت الحركة كل خطوتين
+      if (currentStep % 2 === 0) {
+        playMoveSound();
+      }
 
       if (currentStep >= steps) {
         clearInterval(animationInterval);
@@ -251,6 +316,9 @@ const SnakesLaddersRoom = () => {
         description: `تقدمت من المربع ${position} إلى ${targetPosition}`
       });
       
+      // تشغيل صوت السلم
+      playSound(ladderSoundRef);
+      
       // محاكاة الحركة للسلم
       setTimeout(() => {
         animateMovement(position, targetPosition, playerIndex, true);
@@ -267,6 +335,9 @@ const SnakesLaddersRoom = () => {
         title: "🐍 وقعت في ثعبان!",
         description: `تراجعت من المربع ${position} إلى ${targetPosition}`
       });
+      
+      // تشغيل صوت الثعبان
+      playSound(snakeSoundRef);
       
       // محاكاة الحركة للثعبان
       setTimeout(() => {
@@ -297,6 +368,9 @@ const SnakesLaddersRoom = () => {
       
       const winMessage = `🎉 ${winner} فاز باللعبة!`;
       addGameMessage(winMessage);
+      
+      // تشغيل صوت الفوز
+      playSound(winSoundRef);
     }
     
     // حساب اللاعب التالي
@@ -380,6 +454,9 @@ const SnakesLaddersRoom = () => {
     const playerName = roomData[`player${currentPlayerIndex + 1}_name`];
     const rollMessage = `🎲 ${playerName} رمى النرد وحصل على ${diceValue}!`;
     addGameMessage(rollMessage);
+    
+    // تشغيل صوت النرد
+    playSound(diceSoundRef);
     
     // تحديث قيمة النرد في قاعدة البيانات
     await supabase
@@ -551,12 +628,37 @@ const SnakesLaddersRoom = () => {
               العودة
             </Button>
             
-            {(isHost || playerNumber === 1) && (
-              <Button onClick={shareRoom} variant="outline" size="sm">
-                <Copy className="ml-2 h-4 w-4" />
-                مشاركة الرابط
+            <div className="flex items-center space-x-2">
+              {/* عناصر التحكم في الصوت */}
+              <Button 
+                onClick={() => setIsMuted(!isMuted)} 
+                variant="outline" 
+                size="sm"
+                title={isMuted ? "تشغيل الصوت" : "كتم الصوت"}
+              >
+                {isMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
               </Button>
-            )}
+              
+              {!isMuted && (
+                <input
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.1"
+                  value={volume}
+                  onChange={(e) => setVolume(parseFloat(e.target.value))}
+                  className="w-20"
+                  title="مستوى الصوت"
+                />
+              )}
+            
+              {(isHost || playerNumber === 1) && (
+                <Button onClick={shareRoom} variant="outline" size="sm">
+                  <Copy className="ml-2 h-4 w-4" />
+                  مشاركة الرابط
+                </Button>
+              )}
+            </div>
           </div>
 
           {/* معلومات اللعبة */}
