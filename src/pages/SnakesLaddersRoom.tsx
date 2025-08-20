@@ -39,7 +39,7 @@ const SnakesLaddersRoom = () => {
   
   const [sessionId] = useState(() => `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`);
 
-  // تعريف السلالم والثعابين بناءً على الخريطة المعدلة
+  // تعريف السلالم والثعابين
   const snakesAndLadders = {
     ladders: {
       1: 38,
@@ -58,14 +58,13 @@ const SnakesLaddersRoom = () => {
       64: 60,
       87: 24,
       93: 73,
-      98: 79,
-      99: 41
+      98: 79
     }
   };
 
   // إحداثيات الخلايا على اللوحة (10x10) - تبدأ من الأسفل على اليسار وتتجه للأعلى
   const boardLayout = [
-    // الصف 1 (الأسفل) - يبدأ من اليسار
+    // الصف 1 (الأسفل) - من اليسار إلى اليمين
     [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
     // الصف 2 - من اليمين إلى اليسار
     [20, 19, 18, 17, 16, 15, 14, 13, 12, 11],
@@ -530,12 +529,12 @@ const SnakesLaddersRoom = () => {
                             {playersHere.slice(0, 2).map((player, idx) => (
                               <div
                                 key={idx}
-                                className={`w-4 h-4 rounded-full ${player.color} border border-white`}
+                                className={`w-3 h-3 rounded-full ${player.color} border border-white`}
                                 title={player.name}
                               />
                             ))}
                             {playersHere.length > 2 && (
-                              <div className="w-4 h-4 rounded-full bg-gray-500 text-white text-[8px] flex items-center justify-center border border-white">
+                              <div className="w-3 h-3 rounded-full bg-gray-500 text-white text-[8px] flex items-center justify-center border border-white">
                                 +{playersHere.length - 2}
                               </div>
                             )}
@@ -543,20 +542,17 @@ const SnakesLaddersRoom = () => {
                         )}
                         
                         {/* عرض أيقونات السلالم والثعابين */}
-                        {isLadder && (
-                          <div className="absolute bottom-1 right-1 text-lg" title={`سلم إلى ${snakesAndLadders.ladders[cellNumber as keyof typeof snakesAndLadders.ladders]}`}>
-                            🪜
-                          </div>
-                        )}
-                        
-                        {isSnake && (
-                          <div className="absolute bottom-1 right-1 text-lg" title={`ثعبان إلى ${snakesAndLadders.snakes[cellNumber as keyof typeof snakesAndLadders.snakes]}`}>
-                            🐍
+                        {(isLadder || isSnake) && (
+                          <div className={`absolute bottom-0 right-0 text-sm ${isLadder ? 'text-green-600' : 'text-red-600'}`} 
+                            title={isLadder ? 
+                              `سلم إلى ${snakesAndLadders.ladders[cellNumber as keyof typeof snakesAndLadders.ladders]}` : 
+                              `ثعبان إلى ${snakesAndLadders.snakes[cellNumber as keyof typeof snakesAndLadders.snakes]}`}>
+                            {isLadder ? '🪜' : '🐍'}
                           </div>
                         )}
                         
                         {/* عرض رقم الخلية */}
-                        <span className="absolute top-1 left-1 text-xs font-bold bg-white bg-opacity-70 rounded-full w-5 h-5 flex items-center justify-center">
+                        <span className="absolute top-0 left-0 text-[10px] font-bold bg-white bg-opacity-70 rounded-full w-4 h-4 flex items-center justify-center">
                           {cellNumber}
                         </span>
                       </div>
@@ -603,7 +599,7 @@ const SnakesLaddersRoom = () => {
                 player.active && (
                   <div key={index} className="flex justify-between items-center p-2 bg-gray-100 dark:bg-gray-800 rounded">
                     <div className="flex items-center">
-                      <div className={`w-4 h-4 rounded-full ${player.color} mr-2`}></div>
+                      <div className={`w-3 h-3 rounded-full ${player.color} mr-2`}></div>
                       <span>{player.name} (لاعب {index + 1})</span>
                     </div>
                     <span className="font-semibold">المربع: {player.position}</span>
@@ -622,28 +618,28 @@ const SnakesLaddersRoom = () => {
           <CardContent>
             <div className="grid grid-cols-2 gap-4">
               <div className="flex items-center">
-                <span className="text-2xl mr-2">🪜</span>
-                <span>سلم - يصعدك لمربع أعلى</span>
+                <span className="text-lg mr-2">🪜</span>
+                <span className="text-sm">سلم - يصعدك لمربع أعلى</span>
               </div>
               <div className="flex items-center">
-                <span className="text-2xl mr-2">🐍</span>
-                <span>ثعبان - ينزلك لمربع أدنى</span>
+                <span className="text-lg mr-2">🐍</span>
+                <span className="text-sm">ثعبان - ينزلك لمربع أدنى</span>
               </div>
               <div className="flex items-center">
-                <div className="w-4 h-4 rounded-full bg-red-500 mr-2"></div>
-                <span>اللاعب الأول</span>
+                <div className="w-3 h-3 rounded-full bg-red-500 mr-2"></div>
+                <span className="text-sm">اللاعب الأول</span>
               </div>
               <div className="flex items-center">
-                <div className="w-4 h-4 rounded-full bg-blue-500 mr-2"></div>
-                <span>اللاعب الثاني</span>
+                <div className="w-3 h-3 rounded-full bg-blue-500 mr-2"></div>
+                <span className="text-sm">اللاعب الثاني</span>
               </div>
               <div className="flex items-center">
-                <div className="w-4 h-4 rounded-full bg-green-500 mr-2"></div>
-                <span>اللاعب الثالث</span>
+                <div className="w-3 h-3 rounded-full bg-green-500 mr-2"></div>
+                <span className="text-sm">اللاعب الثالث</span>
               </div>
               <div className="flex items-center">
-                <div className="w-4 h-4 rounded-full bg-yellow-500 mr-2"></div>
-                <span>اللاعب الرابع</span>
+                <div className="w-3 h-3 rounded-full bg-yellow-500 mr-2"></div>
+                <span className="text-sm">اللاعب الرابع</span>
               </div>
             </div>
           </CardContent>
