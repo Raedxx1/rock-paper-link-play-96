@@ -19,7 +19,8 @@ interface TicTacToeRoom {
   game_status: 'waiting' | 'playing' | 'round_complete' | 'game_complete';
   winner: 'player1' | 'player2' | 'tie' | null;
   round_winner: 'player1' | 'player2' | 'tie' | null;
-  current_player: 'player1' | 'player2'; // تمت إضافة هذا الحقل
+  current_player: 'player1' | 'player2';
+  last_activity_at?: string; // تمت إضافة هذا الحقل
 }
 
 const TicTacToeRoom = () => {
@@ -32,9 +33,24 @@ const TicTacToeRoom = () => {
   const [playerName, setPlayerName] = useState('');
   const [isPlayer2, setIsPlayer2] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [isMakingMove, setIsMakingMove] = useState(false);
   
   // إنشاء session ID فريد لهذا المستخدم
   const [sessionId] = useState(() => `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`);
+
+  // دالة مساعدة لتحديث وقت النشاط
+  const updateLastActivity = async () => {
+    if (!roomCode) return;
+    
+    try {
+      await supabase
+        .from('tic_tac_toe_rooms')
+        .update({ last_activity_at: new Date().toISOString() })
+        .eq('id', roomCode);
+    } catch (error) {
+      console.error("Error updating last activity:", error);
+    }
+  };
 
   // جلب بيانات الغرفة
   const fetchRoomData = async () => {
@@ -128,7 +144,8 @@ const TicTacToeRoom = () => {
         player2_name: playerName.trim(),
         player2_session_id: sessionId,
         game_status: 'playing',
-        current_player: 'player1' // يبدأ اللاعب الأول بعد الانضمام
+        current_player: 'player1', // يبدأ اللاعب الأول بعد الانضمام
+        last_activity_at: new Date().toISOString() // تحديث وقت النشاط
       })
       .eq('id', roomCode)
       .is('player2_name', null)
@@ -171,7 +188,7 @@ const TicTacToeRoom = () => {
 
   // التعامل مع النقر على خلية
   const handleCellClick = async (index: number) => {
-    if (!roomData || !roomCode || roomData.game_status !== 'playing') return;
+    if (!roomData || !roomCode || roomData.game_status !== 'playing' || isMakingMove) return;
 
     // التحقق من أن الشخص له صلاحية اللعب
     if (!isHost && isPlayer2 && roomData.player2_session_id !== sessionId) {
@@ -197,10 +214,14 @@ const TicTacToeRoom = () => {
       return;
     }
 
+    setIsMakingMove(true);
     const currentBoard = JSON.parse(roomData.board || '["", "", "", "", "", "", "", "", ""]');
     
     // التحقق إذا كانت الخلية محجوزة بالفعل
-    if (currentBoard[index]) return;
+    if (currentBoard[index]) {
+      setIsMakingMove(false);
+      return;
+    }
 
     // تحديد رمز اللاعب الحالي
     const playerSymbol = (isHost || !isPlayer2) ? 'X' : 'O';
@@ -211,7 +232,8 @@ const TicTacToeRoom = () => {
 
     let updateData: any = {
       board: JSON.stringify(currentBoard),
-      current_player: roomData.current_player === 'player1' ? 'player2' : 'player1' // تغيير الدور
+      current_player: roomData.current_player === 'player1' ? 'player2' : 'player1', // تغيير الدور
+      last_activity_at: new Date().toISOString() // تحديث وقت النشاط
     };
 
     if (winner) {
@@ -246,6 +268,8 @@ const TicTacToeRoom = () => {
         variant: "destructive"
       });
     }
+    
+    setIsMakingMove(false);
   };
 
   // إعادة تعيين الجولة
@@ -260,7 +284,8 @@ const TicTacToeRoom = () => {
         round_winner: null,
         current_round: (roomData?.current_round || 1) + 1,
         game_status: 'playing',
-        current_player: 'player1' // إعادة التعيين إلى اللاعب الأول
+        current_player: 'player1', // إعادة التعيين إلى اللاعب الأول
+        last_activity_at: new Date().toISOString() // تحديث وقت النشاط
       })
       .eq('id', roomCode);
 
@@ -287,7 +312,8 @@ const TicTacToeRoom = () => {
         winner: null,
         round_winner: null,
         game_status: 'playing',
-        current_player: 'player1' // إعادة التعيين إلى اللاعب الأول
+        current_player: 'player1', // إعادة التعيين إلى اللاعب الأول
+        last_activity_at: new Date().toISOString() // تحديث وقت النشاط
       })
       .eq('id', roomCode);
 
@@ -484,18 +510,18 @@ const TicTacToeRoom = () => {
                     className={`w-full h-16 text-2xl font-bold ${
                       cell === 'X' ? 'bg-blue-500 text-white hover:bg-blue-600' :
                       cell === 'O' ? 'bg-red-500 text-white hover:bg-red-600' :
-                      'bg-gray-100 hover:bg-gray-200'
-                    }`}
-                    onClick={() => roomData.game_status === 'playing' && handleCellClick(index)}
-                    disabled={roomData.game_status !== 'playing' || !!cell}
+                      'bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700'
+                    } ${isMakingMove ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    onClick={() => handleCellClick(index)}
+                    disabled={roomData.game_status !== 'playing' || !!cell || isMakingMove}
                   >
-                    {cell}
+                    {cell === 'X' ? '❌' : cell === 'O' ? '⭕' : ''}
                   </Button>
                 ))}
               </div>
 
               {(isRoundComplete || isGameComplete) && roomData.winner && (
-                <div className="text-center p-4 bg-green-100 rounded-lg">
+                <div className="text-center p-4 bg-green-100 dark:bg-green-900 rounded-lg">
                   <p className="text-lg font-semibold">
                     {roomData.winner === 'tie' ? '🤝 تعادل!' : 
                      `🎉 الفائز: ${roomData.winner === 'player1' ? roomData.player1_name : roomData.player2_name}`}
