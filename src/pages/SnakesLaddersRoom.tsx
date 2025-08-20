@@ -498,11 +498,11 @@ const SnakesLaddersRoom = () => {
               <img 
                 src="/snakes-ladders-board.jpg" 
                 alt="لوحة السلم والثعبان" 
-                className="w-30 h-auto rounded-lg shadow-inner"
+                className="w-full h-auto rounded-lg shadow-inner"
               />
               
               {/* شبكة الخلايا الشفافة فوق الخلفية */}
-              <div className="absolute inset-0 grid grid-cols-10 grid-rows-10 gap-0">
+              <div className="absolute inset-0 grid grid-cols-0 grid-rows-0 gap-0">
                 {boardLayout.map((row, rowIndex) => (
                   row.map((cellNumber, colIndex) => {
                     const playersHere = players.filter(player => 
