@@ -514,8 +514,8 @@ const SnakesLaddersRoom = () => {
                     
                     // حساب الإحداثيات بناءً على الصف والعمود
                     const adjustedRowIndex = 9 - rowIndex; 
-                    const top = `${adjustedRowIndex * 9.5}%`;
-                    const left = `${colIndex * 9.5}%`;
+                    const top = `${adjustedRowIndex * 9.8}%`;
+                    const left = `${colIndex * 9.8}%`;
                     const width = '9.5%';
                     const height = '9.5%';
                     
