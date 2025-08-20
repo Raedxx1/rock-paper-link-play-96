@@ -1,345 +1,241 @@
-import { useState, useEffect } from 'react';
-import { useSearchParams, useNavigate } from 'react-router-dom';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Copy, ArrowLeft, RotateCcw, Users } from 'lucide-react';
-import { toast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
+import React, { useEffect, useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
+import { supabase } from '../supabaseClient';
+import { Button } from '../components/ui/button';
+import { Card, CardContent } from '../components/ui/card';
 
-interface SnakesLaddersRoom {
-  id: string;
-  player1_name: string;
-  player2_name: string | null;
-  player3_name: string | null;
-  player4_name: string | null;
-  player1_session_id: string | null;
-  player2_session_id: string | null;
-  player3_session_id: string | null;
-  player4_session_id: string | null;
-  player_positions: string;
-  board_state: string;
-  current_player_index: number;
-  max_players: number;
-  game_status: 'waiting' | 'playing' | 'finished';
-  winner: string | null;
-  dice_value: number | null;
-  created_at: string;
-}
+const snakesAndLadders = {
+  ladders: { 3: 22, 5: 8, 11: 26, 20: 29 },
+  snakes: { 27: 1, 21: 9, 17: 4, 19: 7 }
+};
 
 const SnakesLaddersRoom = () => {
-  const [searchParams] = useSearchParams();
+  const { roomCode } = useParams();
   const navigate = useNavigate();
-  const roomCode = searchParams.get('r');
-  const isHost = searchParams.get('host') === 'true';
-
-  const [roomData, setRoomData] = useState<SnakesLaddersRoom | null>(null);
-  const [playerName, setPlayerName] = useState('');
-  const [loading, setLoading] = useState(true);
+  const [roomData, setRoomData] = useState<any>(null);
   const [playerNumber, setPlayerNumber] = useState<number | null>(null);
+  const [sessionId] = useState(() => crypto.randomUUID());
 
-  const [sessionId] = useState(() => `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`);
-
-  const snakesAndLadders = {
-    ladders: { 1: 38, 4: 14, 9: 31, 21: 42, 28: 84, 51: 67, 80: 100, 71: 91 },
-    snakes: { 17: 7, 54: 34, 62: 19, 64: 60, 87: 24, 93: 73, 98: 79 }
-  };
-
-  const boardLayout = [
-    [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
-    [20, 19, 18, 17, 16, 15, 14, 13, 12, 11],
-    [21, 22, 23, 24, 25, 26, 27, 28, 29, 30],
-    [40, 39, 38, 37, 36, 35, 34, 33, 32, 31],
-    [41, 42, 43, 44, 45, 46, 47, 48, 49, 50],
-    [60, 59, 58, 57, 56, 55, 54, 53, 52, 51],
-    [61, 62, 63, 64, 65, 66, 67, 68, 69, 70],
-    [80, 79, 78, 77, 76, 75, 74, 73, 72, 71],
-    [81, 82, 83, 84, 85, 86, 87, 88, 89, 90],
-    [100, 99, 98, 97, 96, 95, 94, 93, 92, 91]
-  ];
-
-  const fetchRoomData = async () => {
-    if (!roomCode) return;
-
-    const { data, error } = await supabase
-      .from('snakes_ladders_rooms')
-      .select('*')
-      .eq('id', roomCode)
-      .single();
-
-    if (error) {
-      if (error.code === 'PGRST116') {
-        toast({
-          title: "❌ الغرفة غير موجودة",
-          description: "تأكد من صحة الرابط",
-          variant: "destructive"
-        });
-        navigate('/snakes-home');
-      }
-      return;
-    }
-
-    setRoomData(data as SnakesLaddersRoom);
-    setLoading(false);
-    determinePlayerNumber(data as SnakesLaddersRoom);
-  };
-
-  const determinePlayerNumber = (data: SnakesLaddersRoom) => {
-    if (isHost) {
-      setPlayerNumber(1);
-      return;
-    }
-    if (data.player2_session_id === sessionId) setPlayerNumber(2);
-    else if (data.player3_session_id === sessionId) setPlayerNumber(3);
-    else if (data.player4_session_id === sessionId) setPlayerNumber(4);
-    else setPlayerNumber(null);
-  };
-
+  // 🟢 جلب بيانات الغرفة
   useEffect(() => {
-    if (!roomCode) {
-      navigate('/snakes-home');
-      return;
-    }
+    if (!roomCode) return;
+    const fetchRoom = async () => {
+      const { data } = await supabase.from('snakes_ladders_rooms').select('*').eq('id', roomCode).single();
+      if (data) setRoomData(data);
+    };
+    fetchRoom();
 
-    fetchRoomData();
-
-    const subscription = supabase
-      .channel('snakes_ladders_room_changes')
-      .on('postgres_changes',
-        { event: '*', schema: 'public', table: 'snakes_ladders_rooms', filter: `id=eq.${roomCode}` },
-        (payload) => {
-          if (payload.eventType === 'UPDATE') {
-            const newData = payload.new as SnakesLaddersRoom;
-            setRoomData(newData);
-            determinePlayerNumber(newData);
-          }
-        }
-      )
+    const channel = supabase
+      .channel('room-changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'snakes_ladders_rooms', filter: `id=eq.${roomCode}` }, (payload) => {
+        setRoomData(payload.new);
+      })
       .subscribe();
 
-    return () => { supabase.removeChannel(subscription); };
-  }, [roomCode, navigate, isHost]);
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [roomCode]);
 
-  const joinGame = async () => {
-    if (!playerName.trim() || !roomCode) return;
+  // 🟢 تحديد رقم اللاعب (انضمام)
+  useEffect(() => {
     if (!roomData) return;
-
-    let chosenSlot = null;
-    if (!roomData.player2_name) chosenSlot = 2;
-    else if (!roomData.player3_name) chosenSlot = 3;
-    else if (!roomData.player4_name) chosenSlot = 4;
-
-    if (!chosenSlot) {
-      toast({ title: "❌ الغرفة ممتلئة", description: "لا يمكن الانضمام", variant: "destructive" });
-      return;
+    if (roomData.player1_session_id === sessionId) setPlayerNumber(1);
+    else if (roomData.player2_session_id === sessionId) setPlayerNumber(2);
+    else if (!roomData.player1_session_id) {
+      joinGame(1);
+    } else if (!roomData.player2_session_id) {
+      joinGame(2);
     }
+  }, [roomData]);
 
-    const { error } = await supabase
+  const joinGame = async (slot: number) => {
+    const playerName = prompt('ادخل اسمك') || `لاعب ${slot}`;
+    await supabase
       .from('snakes_ladders_rooms')
       .update({
-        [`player${chosenSlot}_name`]: playerName.trim(),
-        [`player${chosenSlot}_session_id`]: sessionId,
-        game_status: roomData.player1_name ? 'playing' : 'waiting'
+        [`player${slot}_name`]: playerName,
+        [`player${slot}_session_id`]: sessionId
       })
       .eq('id', roomCode);
-
-    if (error) {
-      toast({ title: "❌ خطأ في الانضمام", description: "حاول مرة أخرى", variant: "destructive" });
-      return;
-    }
-    toast({ title: "✅ انضممت للعبة", description: "استعد للعب" });
+    setPlayerNumber(slot);
   };
 
+  // 🟢 مغادرة لاعب
+  const leaveGame = async () => {
+    if (!playerNumber) return;
+    const name = roomData[`player${playerNumber}_name`];
+    await supabase
+      .from('snakes_ladders_rooms')
+      .update({
+        [`player${playerNumber}_name`]: null,
+        [`player${playerNumber}_session_id`]: null,
+        last_move: `🚪 اللاعب ${name} خرج من الغرفة`
+      })
+      .eq('id', roomCode);
+    navigate('/snakes-home');
+  };
+
+  // 🟢 رمي النرد
   const rollDice = async () => {
-    if (!roomCode || !roomData || roomData.game_status !== 'playing') return;
-    if (playerNumber !== roomData.current_player_index + 1) {
-      toast({ title: "⏳ ليس دورك الآن", description: "انتظر دورك للعب", variant: "destructive" });
-      return;
-    }
+    if (!roomData || playerNumber !== roomData.current_player_index + 1) return;
 
     const diceValue = Math.floor(Math.random() * 6) + 1;
-    const positions = JSON.parse(roomData.player_positions || '[0,0,0,0]');
+    const positions = roomData.player_positions || [0, 0];
     const currentPlayerIndex = roomData.current_player_index;
-    positions[currentPlayerIndex] += diceValue;
+    const playerName = roomData[`player${currentPlayerIndex + 1}_name`];
 
-    let newGameStatus = roomData.game_status;
+    const prevPos = positions[currentPlayerIndex];
+    let newPos = prevPos + diceValue;
+    let moveMsg = `🎲 ${playerName} رمى ${diceValue} وانتقل من ${prevPos} إلى ${newPos}`;
+
+    if (snakesAndLadders.ladders[newPos]) {
+      newPos = snakesAndLadders.ladders[newPos];
+      moveMsg += ` 🚀 وصعد بالسلم إلى ${newPos}`;
+    } else if (snakesAndLadders.snakes[newPos]) {
+      newPos = snakesAndLadders.snakes[newPos];
+      moveMsg += ` 🐍 وطاح بالثعبان إلى ${newPos}`;
+    }
+
+    positions[currentPlayerIndex] = newPos;
+
+    let newGameStatus = 'in_progress';
     let winner = null;
-    if (positions[currentPlayerIndex] >= 100) {
-      positions[currentPlayerIndex] = 100;
+    if (newPos >= 100) {
       newGameStatus = 'finished';
-      winner = roomData[`player${currentPlayerIndex + 1}_name` as keyof SnakesLaddersRoom];
+      winner = playerName;
+      moveMsg = `🏆 ${playerName} فاز باللعبة!`;
     }
 
-    const currentPosition = positions[currentPlayerIndex];
-    if (snakesAndLadders.ladders[currentPosition]) {
-      positions[currentPlayerIndex] = snakesAndLadders.ladders[currentPosition];
-    } else if (snakesAndLadders.snakes[currentPosition]) {
-      positions[currentPlayerIndex] = snakesAndLadders.snakes[currentPosition];
-    }
-
-    let nextPlayerIndex = (currentPlayerIndex + 1) % 4;
-    const players = [roomData.player1_name, roomData.player2_name, roomData.player3_name, roomData.player4_name];
-    while (!players[nextPlayerIndex] && nextPlayerIndex !== currentPlayerIndex) {
-      nextPlayerIndex = (nextPlayerIndex + 1) % 4;
-    }
+    const nextPlayerIndex = (currentPlayerIndex + 1) % 2;
 
     await supabase
       .from('snakes_ladders_rooms')
       .update({
         player_positions: JSON.stringify(positions),
-        current_player_index: newGameStatus === 'finished' ? currentPlayerIndex : nextPlayerIndex,
+        current_player_index: nextPlayerIndex,
         game_status: newGameStatus,
-        winner: winner,
-        dice_value: diceValue
+        winner,
+        dice_value: diceValue,
+        last_move: moveMsg
       })
       .eq('id', roomCode);
   };
 
+  // 🟢 إعادة اللعبة
   const resetGame = async () => {
-    if (!roomCode) return;
     await supabase
       .from('snakes_ladders_rooms')
-      .update({ player_positions: JSON.stringify([0, 0, 0, 0]), current_player_index: 0, game_status: 'playing', winner: null, dice_value: null })
+      .update({
+        player_positions: JSON.stringify([0, 0]),
+        current_player_index: 0,
+        game_status: 'waiting',
+        winner: null,
+        dice_value: null,
+        last_move: null
+      })
       .eq('id', roomCode);
   };
 
-  const shareRoom = async () => {
-    const link = `${window.location.origin}/snakes-ladders?r=${roomCode}`;
-    await navigator.clipboard.writeText(link);
-    toast({ title: "✅ تم نسخ الرابط!", description: "شارك الرابط مع أصدقائك" });
-  };
+  if (!roomData) return <div className="text-center p-4">جاري التحميل...</div>;
 
-  if (!roomCode) return <div>رمز الغرفة مطلوب</div>;
-  if (loading) return <div className="min-h-screen flex items-center justify-center">⏳ جارٍ تحميل الغرفة...</div>;
-  if (!roomData) return <div className="min-h-screen flex items-center justify-center">❌ الغرفة غير موجودة</div>;
-
-  const positions = JSON.parse(roomData.player_positions || '[0,0,0,0]');
   const players = [
-    { name: roomData.player1_name, position: positions[0], active: !!roomData.player1_name, color: 'bg-red-500' },
-    { name: roomData.player2_name, position: positions[1], active: !!roomData.player2_name, color: 'bg-blue-500' },
-    { name: roomData.player3_name, position: positions[2], active: !!roomData.player3_name, color: 'bg-green-500' },
-    { name: roomData.player4_name, position: positions[3], active: !!roomData.player4_name, color: 'bg-yellow-500' },
+    { name: roomData.player1_name, color: 'bg-red-500' },
+    { name: roomData.player2_name, color: 'bg-blue-500' }
   ];
-  const activePlayers = players.filter(p => p.active);
+  const positions = roomData.player_positions ? JSON.parse(roomData.player_positions) : [0, 0];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-orange-50 to-red-50 dark:from-gray-900 dark:to-gray-800 p-4" dir="rtl">
-      <div className="max-w-4xl mx-auto space-y-6">
+    <div className="p-4 space-y-4">
+      {/* أزرار فوق */}
+      <div className="flex justify-between items-center">
+        <Button onClick={() => navigate('/snakes-home')}>⬅️ العودة</Button>
+        <Button
+          onClick={() => {
+            navigator.clipboard.writeText(window.location.href);
+            alert('تم نسخ الرابط ✅');
+          }}
+        >
+          📤 مشاركة الرابط
+        </Button>
+      </div>
 
-        {/* أزرار العودة والمشاركة */}
-        <div className="flex justify-between items-center">
-          <Button onClick={() => navigate('/snakes-home')} variant="outline" size="sm">
-            <ArrowLeft className="ml-2 h-4 w-4" /> العودة
-          </Button>
-          {(isHost || playerNumber === 1) && (
-            <Button onClick={shareRoom} variant="outline" size="sm">
-              <Copy className="ml-2 h-4 w-4" /> مشاركة الرابط
-            </Button>
-          )}
-        </div>
+      <Card>
+        <CardContent className="p-4">
+          <h2 className="text-xl font-bold mb-2">🎲 لعبة السلم والثعبان</h2>
+          <div className="relative w-full max-w-md mx-auto">
+            <img src="/snakes-ladders-board.jpg" alt="لوحة السلم والثعبان" className="w-full h-auto" />
 
-        {/* شاشة إدخال الاسم */}
-        {!playerNumber && roomData.game_status === 'waiting' && (
-          <Card>
-            <CardHeader><CardTitle>🎮 ادخل اسمك للانضمام</CardTitle></CardHeader>
-            <CardContent>
-              <div className="flex space-x-2">
-                <Input value={playerName} onChange={(e) => setPlayerName(e.target.value)} placeholder="اكتب اسمك" />
-                <Button onClick={joinGame}>انضم</Button>
-              </div>
-            </CardContent>
-          </Card>
-        )}
+            {/* 🟢 رسم الخلايا واللاعبين */}
+            {Array.from({ length: 10 }).map((_, rowIndex) =>
+              Array.from({ length: 10 }).map((_, colIndex) => {
+                const isEvenRow = rowIndex % 2 === 0;
+                const cellNumber = rowIndex * 10 + (isEvenRow ? colIndex + 1 : 10 - colIndex);
+                const playersHere = players.filter((_, idx) => positions[idx] === cellNumber);
 
-        {/* اللوحة */}
-        <Card>
-          <CardHeader><CardTitle>🎲 لعبة السلم والثعبان</CardTitle></CardHeader>
-          <CardContent>
-            <div className="relative aspect-square w-full max-w-2xl mx-auto">
-              <img src="/snakes-ladders-board.png" alt="لوحة السلم والثعبان" className="w-full h-full object-contain" />
-              <div className="absolute inset-0">
-                {boardLayout.map((row, rowIndex) =>
-                  row.map((cellNumber, colIndex) => {
-                    const top = `${(9 - rowIndex) * 10}%`;
-                    const left = `${colIndex * 10}%`;
-                    const width = `10%`;
-                    const height = `10%`;
+                const top = `${(9 - rowIndex) * 10}%`;
+                const left = `${colIndex * 10}%`;
 
-                    const playersHere = activePlayers.filter(p => p.position === cellNumber);
-
-                    return (
-                      <div
-                        key={cellNumber}
-                        className="absolute"
-                        style={{ top, left, width, height }}
-                      >
-                        {playersHere.length > 0 && (
-                          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 flex">
-                            {playersHere.map((player, idx) => (
-                              <div key={idx} className={`w-3 h-3 rounded-full ${player.color} border border-white`} />
-                            ))}
-                          </div>
-                        )}
+                return (
+                  <div key={cellNumber} className="absolute" style={{ top, left, width: '10%', height: '10%' }}>
+                    {playersHere.length > 0 && (
+                      <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 flex space-x-1">
+                        {playersHere.map((player, idx) => (
+                          <div key={idx} className={`w-4 h-4 rounded-full ${player.color} border border-white`} />
+                        ))}
                       </div>
-                    );
-                  })
-                )}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* حالة اللعبة */}
-        <Card>
-          <CardContent>
-            {roomData.game_status === 'waiting' && (
-              <div className="text-center p-4">⏳ في انتظار لاعبين آخرين...</div>
-            )}
-            {roomData.game_status === 'playing' && (
-              <div className="text-center p-4">
-                🎲 الدور الحالي: {players[roomData.current_player_index].name}
-                {roomData.dice_value && <div className="mt-2">🎲 نتيجة النرد: {roomData.dice_value}</div>}
-              </div>
-            )}
-            {roomData.game_status === 'finished' && (
-              <div className="text-center p-4 text-xl font-bold">🏆 الفائز: {roomData.winner}</div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* أزرار التحكم */}
-        {roomData.game_status === 'playing' && (
-          <div className="flex justify-center space-x-4">
-            <Button onClick={rollDice}>🎲 رمي النرد</Button>
-            {(isHost || playerNumber === 1) && (
-              <Button onClick={resetGame} variant="outline">
-                <RotateCcw className="ml-2 h-4 w-4" /> إعادة اللعبة
-              </Button>
+                    )}
+                  </div>
+                );
+              })
             )}
           </div>
+        </CardContent>
+      </Card>
+
+      {/* 🟢 حالة اللعبة */}
+      <div className="text-center space-y-2">
+        {roomData.winner ? (
+          <div className="text-lg font-bold">🏆 الفائز: {roomData.winner}</div>
+        ) : (
+          <>
+            <div>🎲 الدور الحالي: {players[roomData.current_player_index]?.name || '---'}</div>
+            {roomData.dice_value && <div>🎲 نتيجة النرد: {roomData.dice_value}</div>}
+            {roomData.last_move && (
+              <div className="p-2 bg-gray-100 dark:bg-gray-700 rounded">{roomData.last_move}</div>
+            )}
+          </>
         )}
-
-        {/* اللاعبين */}
-        <Card>
-          <CardHeader><CardTitle><Users className="ml-2 inline h-4 w-4" /> اللاعبون</CardTitle></CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 gap-4">
-              {players.map((player, index) => (
-                player.active && (
-                  <div key={index} className="flex items-center justify-between p-2 bg-white dark:bg-gray-800 rounded-lg">
-                    <div className="flex items-center">
-                      <div className={`w-3 h-3 rounded-full mr-2 ${player.color}`} />
-                      <span>{player.name}</span>
-                    </div>
-                    <span className="text-sm text-gray-500">لاعب {index + 1}</span>
-                  </div>
-                )
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-
       </div>
+
+      {/* 🟢 الأزرار */}
+      <div className="flex justify-center space-x-2">
+        {roomData.game_status !== 'finished' && (
+          <Button onClick={rollDice} disabled={playerNumber !== roomData.current_player_index + 1}>
+            🎲 رمي النرد
+          </Button>
+        )}
+        <Button onClick={resetGame}>إعادة اللعبة</Button>
+        <Button onClick={leaveGame} variant="destructive">🚪 مغادرة</Button>
+      </div>
+
+      {/* 🟢 قائمة اللاعبين */}
+      <Card>
+        <CardContent>
+          <h3 className="text-lg font-bold mb-2">اللاعبون</h3>
+          <div className="space-y-2">
+            {players.map((player, index) => (
+              <div key={index} className="flex items-center justify-between p-2 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                <div className="flex items-center">
+                  <div className={`w-3 h-3 rounded-full mr-2 ${player.color}`} />
+                  <span>{player.name || `لاعب ${index + 1}`}</span>
+                </div>
+                <span className="text-sm text-gray-500">لاعب {index + 1}</span>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 };
