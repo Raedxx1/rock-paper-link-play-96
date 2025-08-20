@@ -14,8 +14,8 @@ serve(async (req) => {
   try {
     const authHeader = req.headers.get('Authorization')!;
     const supabaseClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+      Deno.env.get('https://hwnjqpdlwzkyrgxybsjt.supabase.co') ?? '',
+      Deno.env.get('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh3bmpxcGRsd3preXJneHlic2p0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQwNjI4NDgsImV4cCI6MjA2OTYzODg0OH0.-FutvUNh8MJ-zxIrCJy14lduMsxa4ji5EpybdQE3L_M') ?? '',
       { global: { headers: { Authorization: authHeader } } }
     );
 
