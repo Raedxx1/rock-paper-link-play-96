@@ -513,10 +513,10 @@ const SnakesLaddersRoom = () => {
                     const isSnake = hasSnake(cellNumber);
                     
                     // حساب الإحداثيات بناءً على الصف والعمود
-                    const adjustedRowIndex = 0 - rowIndex; 
-                    const top = `${adjustedRowIndex * 0}%`;
+                    const adjustedRowIndex = 9 - rowIndex; 
+                    const top = `${adjustedRowIndex * 10}%`;
                     const down = `${adjustedRowIndex * 9.7}%`;
-                    const left = `${colIndex * 0}%`;
+                    const left = `${colIndex * 10}%`;
                     const right = `${colIndex * 9.7}%`;
                     const width = '10%';
                     const height = '10%';
