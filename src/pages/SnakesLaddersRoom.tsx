@@ -37,8 +37,7 @@ const SnakesLaddersRoom = () => {
   const [loading, setLoading] = useState(true);
   const [playerNumber, setPlayerNumber] = useState<number | null>(null);
   
-  const [sessionId] = useState(() => `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`); 
-
+  const [sessionId] = useState(() => `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`);
   const [animatedPositions, setAnimatedPositions] = useState([0, 0, 0, 0]);
   const [isAnimating, setIsAnimating] = useState(false);
   const [gameMessages, setGameMessages] = useState([]);
@@ -67,6 +66,30 @@ const SnakesLaddersRoom = () => {
     }
   };
 
+  // ✅ إحداثيات الخلايا تبدأ من أسفل يسار
+  const boardLayout = [
+    // الصف 1 (الأسفل) - من اليسار إلى اليمين
+    [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+    // الصف 2 - من اليمين إلى اليسار
+    [20, 19, 18, 17, 16, 15, 14, 13, 12, 11],
+    // الصف 3 - من اليسار إلى اليمين
+    [21, 22, 23, 24, 25, 26, 27, 28, 29, 30],
+    // الصف 4 - من اليمين إلى اليسار
+    [40, 39, 38, 37, 36, 35, 34, 33, 32, 31],
+    // الصف 5 - من اليسار إلى اليمين
+    [41, 42, 43, 44, 45, 46, 47, 48, 49, 50],
+    // الصف 6 - من اليمين إلى اليسار
+    [60, 59, 58, 57, 56, 55, 54, 53, 52, 51],
+    // الصف 7 - من اليسار إلى اليمين
+    [61, 62, 63, 64, 65, 66, 67, 68, 69, 70],
+    // الصف 8 - من اليمين إلى اليسار
+    [80, 79, 78, 77, 76, 75, 74, 73, 72, 71],
+    // الصف 9 - من اليسار إلى اليمين
+    [81, 82, 83, 84, 85, 86, 87, 88, 89, 90],
+    // الصف 10 (الأعلى) - من اليمين إلى اليسار
+    [100, 99, 98, 97, 96, 95, 94, 93, 92, 91]
+  ];
+
   // تمرير إلى آخر رسالة
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -86,6 +109,96 @@ const SnakesLaddersRoom = () => {
     
     setGameMessages(prev => [...prev, newMessage]);
   };
+
+  const fetchRoomData = async () => {
+    if (!roomCode) return;
+
+    const { data, error } = await supabase
+      .from('snakes_ladders_rooms')
+      .select('*')
+      .eq('id', roomCode)
+      .single();
+
+    if (error) {
+      if (error.code === 'PGRST116') {
+        toast({
+          title: "❌ الغرفة غير موجودة",
+          description: "تأكد من صحة الرابط",
+          variant: "destructive"
+        });
+        navigate('/snakes-home');
+      }
+      return;
+    }
+
+    setRoomData(data as SnakesLaddersRoom);
+    
+    // تحديث المواقع المتحركة عند تلقي بيانات جديدة
+    if (data.player_positions) {
+      const positions = JSON.parse(data.player_positions);
+      setAnimatedPositions(positions);
+    }
+    
+    setLoading(false);
+    determinePlayerNumber(data as SnakesLaddersRoom);
+  };
+
+  const determinePlayerNumber = (data: SnakesLaddersRoom) => {
+    if (isHost) {
+      setPlayerNumber(1);
+      return;
+    }
+
+    if (!data.player2_name || data.player2_session_id === sessionId) {
+      setPlayerNumber(2);
+    } else if (!data.player3_name || data.player3_session_id === sessionId) {
+      setPlayerNumber(3);
+    } else if (!data.player4_name || data.player4_session_id === sessionId) {
+      setPlayerNumber(4);
+    } else {
+      setPlayerNumber(null);
+    }
+  };
+
+  useEffect(() => {
+    if (!roomCode) {
+      navigate('/snakes-home');
+      return;
+    }
+
+    fetchRoomData();
+
+    const subscription = supabase
+      .channel('snakes_ladders_room_changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'snakes_ladders_rooms',
+          filter: `id=eq.${roomCode}`
+        },
+        (payload) => {
+          if (payload.eventType === 'UPDATE') {
+            const newData = payload.new as SnakesLaddersRoom;
+            setRoomData(newData);
+            
+            // تحديث المواقع المتحركة عند تلقي بيانات جديدة
+            if (newData.player_positions) {
+              const positions = JSON.parse(newData.player_positions);
+              setAnimatedPositions(positions);
+            }
+            
+            determinePlayerNumber(newData);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(subscription);
+    };
+  }, [roomCode, navigate, isHost]);
 
   // محاكاة الحركة السلسة
   const animateMovement = (startPosition, endPosition, playerIndex, isLadderOrSnake = false) => {
@@ -112,7 +225,7 @@ const SnakesLaddersRoom = () => {
           setIsAnimating(false);
           
           // التحقق من وجود سلم أو ثعبان في المربع الجديد
-          const finalPosition = animatedPositions[playerIndex];
+          const finalPosition = newPosition;
           checkForSnakeOrLadder(finalPosition, playerIndex);
         } else {
           setIsAnimating(false);
@@ -168,7 +281,7 @@ const SnakesLaddersRoom = () => {
 
   // تحديث الموضع في قاعدة البيانات
   const updatePositionInDatabase = async (playerIndex, newPosition) => {
-    if (!roomCode) return;
+    if (!roomCode || !roomData) return;
 
     const positions = JSON.parse(roomData.player_positions || '[0,0,0,0]');
     positions[playerIndex] = newPosition;
@@ -214,7 +327,37 @@ const SnakesLaddersRoom = () => {
     }
   };
 
-  // تعديل دالة رمي النرد
+  const joinGame = async () => {
+    if (!playerName.trim() || !roomCode || !playerNumber) return;
+
+    const updateField = `player${playerNumber}_name`;
+    const sessionField = `player${playerNumber}_session_id`;
+    
+    const { error } = await supabase
+      .from('snakes_ladders_rooms')
+      .update({
+        [updateField]: playerName.trim(),
+        [sessionField]: sessionId,
+        game_status: roomData?.player2_name ? 'playing' : 'waiting'
+      })
+      .eq('id', roomCode)
+      .is(updateField, null);
+
+    if (error) {
+      toast({
+        title: "❌ خطأ في الانضمام",
+        description: "حاول مرة أخرى",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    toast({
+      title: "✅ تم الانضمام بنجاح!",
+      description: "مرحباً بك في اللعبة"
+    });
+  };
+
   const rollDice = async () => {
     if (!roomCode || !roomData || roomData.game_status !== 'playing' || isAnimating) return;
     
@@ -248,9 +391,141 @@ const SnakesLaddersRoom = () => {
     animateMovement(currentPosition, newPosition, currentPlayerIndex);
   };
 
-  // ... (بقية الكود)
+  const resetGame = async () => {
+    if (!roomCode) return;
 
-  // في جزء عرض اللوحة، استخدام animatedPositions بدلاً من positions
+    const { error } = await supabase
+      .from('snakes_ladders_rooms')
+      .update({
+        player_positions: JSON.stringify([0, 0, 0, 0]),
+        current_player_index: 0,
+        game_status: 'playing',
+        winner: null,
+        dice_value: null
+      })
+      .eq('id', roomCode);
+
+    if (error) {
+      toast({
+        title: "❌ خطأ في إعادة اللعبة",
+        description: "حاول مرة أخرى",
+        variant: "destructive"
+      });
+    } else {
+      setGameMessages([]);
+      setAnimatedPositions([0, 0, 0, 0]);
+    }
+  };
+
+  const shareRoom = async () => {
+    const link = `${window.location.origin}/snakes-ladders?r=${roomCode}`;
+    try {
+      await navigator.clipboard.writeText(link);
+      toast({
+        title: "✅ تم نسخ الرابط!",
+        description: "شارك الرابط مع أصدقائك",
+      });
+    } catch (err) {
+      toast({
+        title: "❌ فشل في نسخ الرابط",
+        description: "حاول نسخه يدوياً",
+        variant: "destructive"
+      });
+    }
+  };
+
+  // دالة لتحديد إذا كانت الخلية تحتوي على سلم
+  const hasLadder = (cellNumber: number) => {
+    return Object.keys(snakesAndLadders.ladders).includes(cellNumber.toString());
+  };
+
+  // دالة لتحديد إذا كانت الخلية تحتوي على ثعبان
+  const hasSnake = (cellNumber: number) => {
+    return Object.keys(snakesAndLadders.snakes).includes(cellNumber.toString());
+  };
+
+  if (!roomCode) {
+    return <div>رمز الغرفة مطلوب</div>;
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-orange-50 to-red-50 flex items-center justify-center" dir="rtl">
+        <div className="text-center">
+          <div className="text-4xl mb-4">⏳</div>
+          <p className="text-lg text-gray-600">جارٍ تحميل الغرفة...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!roomData) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-orange-50 to-red-50 flex items-center justify-center" dir="rtl">
+        <div className="text-center">
+          <div className="text-4xl mb-4">❌</div>
+          <p className="text-lg text-gray-600">الغرفة غير موجودة</p>
+          <Button onClick={() => navigate('/snakes-home')} className="mt-4">
+            العودة
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  // إذا كانت الغرفة ممتلئة والمستخدم ليس من اللاعبين
+  if (roomData.player4_name && !isHost && playerNumber === null) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-orange-50 to-red-50 flex items-center justify-center p-4" dir="rtl">
+        <Card className="w-full max-w-md">
+          <CardHeader className="text-center">
+            <CardTitle className="text-2xl">🚫 الغرفة ممتلئة</CardTitle>
+          </CardHeader>
+          <CardContent className="text-center space-y-4">
+            <p className="text-gray-600">هذه الغرفة تحتوي على 4 لاعبين بالفعل</p>
+            <Button onClick={() => navigate('/snakes-home')} className="w-full">
+              <ArrowLeft className="ml-2 h-4 w-4" />
+              العودة
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // إذا كان اللاعب يحتاج لإدخال اسمه
+  if (!isHost && playerNumber && !roomData[`player${playerNumber}_name` as keyof SnakesLaddersRoom]) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-orange-50 to-red-50 flex items-center justify-center p-4" dir="rtl">
+        <Card className="w-full max-w-md">
+          <CardHeader className="text-center">
+            <CardTitle className="text-2xl">🎮 انضمام للعبة</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium mb-2">اسمك:</label>
+              <input
+                value={playerName}
+                onChange={(e) => setPlayerName(e.target.value)}
+                placeholder="أدخل اسمك هنا"
+                className="w-full p-2 border border-gray-300 rounded text-right"
+                onKeyPress={(e) => e.key === 'Enter' && joinGame()}
+              />
+            </div>
+            <Button 
+              onClick={joinGame} 
+              className="w-full"
+              disabled={!playerName.trim()}
+            >
+              انضم كلاعب {playerNumber}
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  const positions = JSON.parse(roomData.player_positions || '[0,0,0,0]');
   const players = [
     { name: roomData.player1_name, position: animatedPositions[0], active: !!roomData.player1_name, color: 'bg-red-500', emoji: '🔴' },
     { name: roomData.player2_name, position: animatedPositions[1], active: !!roomData.player2_name, color: 'bg-blue-500', emoji: '🔵' },
@@ -258,7 +533,8 @@ const SnakesLaddersRoom = () => {
     { name: roomData.player4_name, position: animatedPositions[3], active: !!roomData.player4_name, color: 'bg-yellow-500', emoji: '🟡' },
   ];
 
-  // في واجهة المستخدم، إضافة قسم للرسائل
+  const activePlayers = players.filter(player => player.active);
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 to-red-50 dark:from-gray-900 dark:to-gray-800 p-4" dir="rtl">
       <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-6">
