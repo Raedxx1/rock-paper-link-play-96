@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Copy, ArrowLeft, RotateCcw, Users, MessageSquare, Volume2, VolumeX } from 'lucide-react';
+import { Copy, ArrowLeft, RotateCcw, Users, MessageSquare, Volume2, VolumeX, UserX } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -24,7 +24,8 @@ interface SnakesLaddersRoom {
   winner: string | null;
   dice_value: number | null;
   created_at: string;
-  game_messages: string | null; // تم إضافة هذا الحقل
+  game_messages: string | null;
+  last_activity_at: string; // تم إضافة هذا الحقل
 }
 
 const SnakesLaddersRoom = () => {
@@ -39,12 +40,26 @@ const SnakesLaddersRoom = () => {
   const [playerNumber, setPlayerNumber] = useState<number | null>(null);
   const [isMuted, setIsMuted] = useState(false);
   const [volume, setVolume] = useState(0.5);
+  const [availableSlots, setAvailableSlots] = useState<number[]>([]);
   
-  const [sessionId] = useState(() => `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`);
+  const [sessionId] = useState(() => {
+    // حاول استعادة sessionId من localStorage إذا كان موجودًا
+    const savedSessionId = localStorage.getItem(`snakes_session_${roomCode}`);
+    if (savedSessionId) return savedSessionId;
+    
+    // إذا لم يكن موجودًا، أنشئ sessionId جديدًا واحفظه
+    const newSessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    if (roomCode) {
+      localStorage.setItem(`snakes_session_${roomCode}`, newSessionId);
+    }
+    return newSessionId;
+  });
+  
   const [animatedPositions, setAnimatedPositions] = useState([0, 0, 0, 0]);
   const [isAnimating, setIsAnimating] = useState(false);
   const [gameMessages, setGameMessages] = useState([]);
   const messagesEndRef = useRef(null);
+  const activityTimeoutRef = useRef(null);
 
   // تعريف الأصوات باستخدام مسارات مطلقة
   const moveSound = '/sounds/move.mp3';
@@ -82,6 +97,25 @@ const SnakesLaddersRoom = () => {
         sound.volume = isMuted ? 0 : volume;
       }
     });
+
+    // إضافة event listener لفحص النشاط
+    const handleActivity = () => {
+      if (roomCode && playerNumber) {
+        updatePlayerActivity();
+      }
+    };
+
+    // تفعيل عند تحريك الماوس أو الضغط على أي مفتاح
+    window.addEventListener('mousemove', handleActivity);
+    window.addEventListener('keypress', handleActivity);
+
+    return () => {
+      window.removeEventListener('mousemove', handleActivity);
+      window.removeEventListener('keypress', handleActivity);
+      if (activityTimeoutRef.current) {
+        clearTimeout(activityTimeoutRef.current);
+      }
+    };
   }, []);
 
   // تحديث مستوى الصوت عند التغيير
@@ -163,6 +197,26 @@ const SnakesLaddersRoom = () => {
   useEffect(() => {
     scrollToBottom();
   }, [gameMessages]);
+
+  // تحديث نشاط اللاعب
+  const updatePlayerActivity = async () => {
+    if (!roomCode || !playerNumber) return;
+    
+    if (activityTimeoutRef.current) {
+      clearTimeout(activityTimeoutRef.current);
+    }
+    
+    activityTimeoutRef.current = setTimeout(async () => {
+      try {
+        await supabase
+          .from('snakes_ladders_rooms')
+          .update({ last_activity_at: new Date().toISOString() })
+          .eq('id', roomCode);
+      } catch (error) {
+        console.error("Error updating activity:", error);
+      }
+    }, 1000);
+  };
 
   // إضافة رسالة جديدة للجميع ومزامنتها مع Supabase
   const addGameMessage = async (message) => {
@@ -257,6 +311,7 @@ const SnakesLaddersRoom = () => {
     
     setLoading(false);
     determinePlayerNumber(data as SnakesLaddersRoom);
+    checkForInactivePlayers(data as SnakesLaddersRoom);
   };
 
   const determinePlayerNumber = (data: SnakesLaddersRoom) => {
@@ -265,14 +320,72 @@ const SnakesLaddersRoom = () => {
       return;
     }
 
-    if (!data.player2_name || data.player2_session_id === sessionId) {
+    // التحقق أولاً إذا كان المستخدم لديه جلسة نشطة مسبقًا
+    if (data.player2_session_id === sessionId) {
       setPlayerNumber(2);
-    } else if (!data.player3_name || data.player3_session_id === sessionId) {
+    } else if (data.player3_session_id === sessionId) {
       setPlayerNumber(3);
-    } else if (!data.player4_name || data.player4_session_id === sessionId) {
+    } else if (data.player4_session_id === sessionId) {
       setPlayerNumber(4);
     } else {
-      setPlayerNumber(null);
+      // إذا لم يكن لديه جلسة نشطة، ابحث عن أول slot متاح
+      if (!data.player2_name || !data.player2_session_id) {
+        setPlayerNumber(2);
+      } else if (!data.player3_name || !data.player3_session_id) {
+        setPlayerNumber(3);
+      } else if (!data.player4_name || !data.player4_session_id) {
+        setPlayerNumber(4);
+      } else {
+        setPlayerNumber(null);
+      }
+    }
+  };
+
+  // التحقق من اللاعبين غير النشطين وتحرير أماكنهم
+  const checkForInactivePlayers = async (data: SnakesLaddersRoom) => {
+    const now = new Date();
+    const inactivePlayers = [];
+    const availableSlots = [];
+
+    // تحقق من كل لاعب إذا كان غير نشط لأكثر من 5 دقائق
+    for (let i = 1; i <= 4; i++) {
+      const playerName = data[`player${i}_name` as keyof SnakesLaddersRoom];
+      const sessionId = data[`player${i}_session_id` as keyof SnakesLaddersRoom];
+      
+      if (playerName && sessionId) {
+        // إذا كان اللاعب غير المضيف، تحقق من وقت النشاط
+        if (i > 1 || !isHost) {
+          const lastActivity = new Date(data.last_activity_at || data.created_at);
+          const minutesInactive = (now.getTime() - lastActivity.getTime()) / (1000 * 60);
+          
+          if (minutesInactive > 5) { // 5 دقائق من عدم النشاط
+            inactivePlayers.push(i);
+            availableSlots.push(i);
+          }
+        }
+      } else if (!playerName && !sessionId) {
+        // إذا كان المكان فارغًا
+        availableSlots.push(i);
+      }
+    }
+
+    setAvailableSlots(availableSlots);
+
+    // تحرير اللاعبين غير النشطين
+    for (const playerNum of inactivePlayers) {
+      try {
+        await supabase
+          .from('snakes_ladders_rooms')
+          .update({
+            [`player${playerNum}_name`]: null,
+            [`player${playerNum}_session_id`]: null
+          })
+          .eq('id', roomCode);
+
+        addGameMessage(`👋 اللاعب ${playerNum} غادر اللعبة بسبب عدم النشاط`);
+      } catch (error) {
+        console.error(`Error removing inactive player ${playerNum}:`, error);
+      }
     }
   };
 
@@ -316,6 +429,7 @@ const SnakesLaddersRoom = () => {
             }
             
             determinePlayerNumber(newData);
+            checkForInactivePlayers(newData);
 
             // تشغيل صوت الفوز إذا تم تحديد فائز
             if (newData.winner && (!roomData || !roomData.winner)) {
@@ -470,7 +584,8 @@ const SnakesLaddersRoom = () => {
         player_positions: JSON.stringify(positions),
         current_player_index: newGameStatus === 'finished' ? playerIndex : nextPlayerIndex,
         game_status: newGameStatus,
-        winner: winner
+        winner: winner,
+        last_activity_at: new Date().toISOString() // تحديث وقت النشاط
       })
       .eq('id', roomCode);
 
@@ -490,10 +605,10 @@ const SnakesLaddersRoom = () => {
       .update({
         [updateField]: playerName.trim(),
         [sessionField]: sessionId,
-        game_status: roomData?.player2_name ? 'playing' : 'waiting'
+        game_status: 'playing',
+        last_activity_at: new Date().toISOString()
       })
-      .eq('id', roomCode)
-      .is(updateField, null);
+      .eq('id', roomCode);
 
     if (error) {
       toast({
@@ -504,6 +619,9 @@ const SnakesLaddersRoom = () => {
       return;
     }
 
+    // حفظ sessionId في localStorage
+    localStorage.setItem(`snakes_session_${roomCode}`, sessionId);
+
     // إضافة رسالة ترحيب
     addGameMessage(`🎮 ${playerName.trim()} انضم إلى اللعبة كلاعب ${playerNumber}!`);
 
@@ -511,6 +629,40 @@ const SnakesLaddersRoom = () => {
       title: "✅ تم الانضمام بنجاح!",
       description: "مرحباً بك في اللعبة"
     });
+  };
+
+  // دالة لمغادرة اللاعب
+  const leaveGame = async () => {
+    if (!roomCode || !playerNumber) return;
+
+    try {
+      const updateField = `player${playerNumber}_name`;
+      const sessionField = `player${playerNumber}_session_id`;
+      
+      await supabase
+        .from('snakes_ladders_rooms')
+        .update({
+          [updateField]: null,
+          [sessionField]: null,
+          last_activity_at: new Date().toISOString()
+        })
+        .eq('id', roomCode);
+
+      // إضافة رسالة مغادرة
+      addGameMessage(`👋 ${playerName} غادر اللعبة`);
+
+      // مسح sessionId من localStorage
+      localStorage.removeItem(`snakes_session_${roomCode}`);
+      
+      toast({
+        title: "👋 وداعاً!",
+        description: "تم مغادرة اللعبة بنجاح"
+      });
+
+      navigate('/snakes-home');
+    } catch (error) {
+      console.error("Error leaving game:", error);
+    }
   };
 
   const rollDice = async () => {
@@ -542,7 +694,10 @@ const SnakesLaddersRoom = () => {
     // تحديث قيمة النرد في قاعدة البيانات
     await supabase
       .from('snakes_ladders_rooms')
-      .update({ dice_value: diceValue })
+      .update({ 
+        dice_value: diceValue,
+        last_activity_at: new Date().toISOString()
+      })
       .eq('id', roomCode);
 
     // بدء الحركة السلسة
@@ -560,7 +715,8 @@ const SnakesLaddersRoom = () => {
         game_status: 'playing',
         winner: null,
         dice_value: null,
-        game_messages: JSON.stringify([])
+        game_messages: JSON.stringify([]),
+        last_activity_at: new Date().toISOString()
       })
       .eq('id', roomCode);
 
@@ -636,7 +792,7 @@ const SnakesLaddersRoom = () => {
   }
 
   // إذا كانت الغرفة ممتلئة والمستخدم ليس من اللاعبين
-  if (roomData.player4_name && !isHost && playerNumber === null) {
+  if (roomData.player4_name && !isHost && playerNumber === null && availableSlots.length === 0) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-orange-50 to-red-50 flex items-center justify-center p-4" dir="rtl">
         <Card className="w-full max-w-md">
@@ -681,6 +837,14 @@ const SnakesLaddersRoom = () => {
             >
               انضم كلاعب {playerNumber}
             </Button>
+            <Button 
+              onClick={() => navigate('/snakes-home')} 
+              variant="outline" 
+              className="w-full"
+            >
+              <ArrowLeft className="ml-2 h-4 w-4" />
+              العودة
+            </Button>
           </CardContent>
         </Card>
       </div>
@@ -705,12 +869,12 @@ const SnakesLaddersRoom = () => {
           {/* شريط التنقل */}
           <div className="flex justify-between items-center">
             <Button 
-              onClick={() => navigate('/snakes-home')} 
+              onClick={leaveGame} 
               variant="outline" 
               size="sm"
             >
               <ArrowLeft className="ml-2 h-4 w-4" />
-              العودة
+              مغادرة اللعبة
             </Button>
             
             <div className="flex items-center space-x-2">
@@ -782,12 +946,19 @@ const SnakesLaddersRoom = () => {
                     <p className="text-lg font-semibold">🎉 الفائز: {roomData.winner}</p>
                   </div>
                 )}
+
+                {availableSlots.length > 0 && (
+                  <div className="p-3 bg-blue-100 dark:bg-blue-900 rounded-lg">
+                    <p className="text-sm text-blue-600 dark:text-blue-300">
+                      <UserX className="inline ml-1 h-4 w-4" />
+                      {availableSlots.length} أماكن متاحة للانضمام
+                    </p>
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
 
-          {/* لوحة اللعبة */}
-          <Card>
             <CardHeader className="text-center">
               <CardTitle>
                 {roomData.game_status === 'waiting' ? '⏳ في انتظار اللاعبين...' : 
