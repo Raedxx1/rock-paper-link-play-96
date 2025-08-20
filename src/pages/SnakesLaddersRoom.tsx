@@ -87,9 +87,6 @@ const SnakesLaddersRoom = () => {
     [100, 99, 98, 97, 96, 95, 94, 93, 92, 91]
   ];
 
-  // عكس ترتيب الصفوف لجعل الصف الأول (الأسفل) يظهر أولاً
-  const reversedBoardLayout = [...boardLayout].reverse();
-
   const fetchRoomData = async () => {
     if (!roomCode) return;
 
@@ -496,62 +493,77 @@ const SnakesLaddersRoom = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-10 gap-1 mb-4 bg-white p-2 rounded-lg shadow-inner mx-auto" style={{ maxWidth: '500px' }}>
-              {reversedBoardLayout.map((row, rowIndex) => (
-                row.map((cellNumber, colIndex) => {
-                  const playersHere = players.filter(player => 
-                    player.active && player.position === cellNumber
-                  );
-                  
-                  const isLadder = hasLadder(cellNumber);
-                  const isSnake = hasSnake(cellNumber);
-                  
-                  // تحديد اتجاه الصف (يمين لليسار أو يسار لليمين)
-                  const isRightToLeft = rowIndex % 2 !== 0;
-                  
-                  return (
-                    <div
-                      key={cellNumber}
-                      className={`w-10 h-10 border border-gray-300 flex items-center justify-center relative text-xs font-medium ${
-                        rowIndex % 2 === 0 
-                          ? (colIndex % 2 === 0 ? 'bg-blue-100' : 'bg-blue-50')
-                          : (colIndex % 2 === 0 ? 'bg-blue-50' : 'bg-blue-100')
-                      }`}
-                    >
-                      <span className="absolute top-0 left-0 text-[8px] p-1">{cellNumber}</span>
-                      
-                      {isLadder && (
-                        <div className="absolute bottom-0 right-0 text-lg" title={`سلم إلى ${snakesAndLadders.ladders[cellNumber as keyof typeof snakesAndLadders.ladders]}`}>
-                          🪜
-                        </div>
-                      )}
-                      
-                      {isSnake && (
-                        <div className="absolute bottom-0 right-0 text-lg" title={`ثعبان إلى ${snakesAndLadders.snakes[cellNumber as keyof typeof snakesAndLadders.snakes]}`}>
-                          🐍
-                        </div>
-                      )}
-                      
-                      {playersHere.length > 0 && (
-                        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 flex">
-                          {playersHere.slice(0, 2).map((player, idx) => (
-                            <div
-                              key={idx}
-                              className={`w-4 h-4 rounded-full ${player.color} border border-white`}
-                              title={player.name}
-                            />
-                          ))}
-                          {playersHere.length > 2 && (
-                            <div className="w-4 h-4 rounded-full bg-gray-500 text-white text-[8px] flex items-center justify-center border border-white">
-                              +{playersHere.length - 2}
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })
-              ))}
+            <div className="relative mb-4 mx-auto" style={{ maxWidth: '500px' }}>
+              {/* خلفية اللوحة */}
+              <img 
+                src="/snakes-ladders-board.jpg" 
+                alt="لوحة السلم والثعبان" 
+                className="w-full h-auto rounded-lg shadow-inner"
+              />
+              
+              {/* شبكة الخلايا الشفافة فوق الخلفية */}
+              <div className="absolute inset-0 grid grid-cols-10 grid-rows-10 gap-0">
+                {boardLayout.map((row, rowIndex) => (
+                  row.map((cellNumber, colIndex) => {
+                    const playersHere = players.filter(player => 
+                      player.active && player.position === cellNumber
+                    );
+                    
+                    const isLadder = hasLadder(cellNumber);
+                    const isSnake = hasSnake(cellNumber);
+                    
+                    // حساب الإحداثيات بناءً على الصف والعمود
+                    const top = `${rowIndex * 10}%`;
+                    const left = `${colIndex * 10}%`;
+                    const width = '10%';
+                    const height = '10%';
+                    
+                    return (
+                      <div
+                        key={cellNumber}
+                        className="absolute border border-gray-400 border-opacity-30"
+                        style={{ top, left, width, height }}
+                      >
+                        {/* عرض اللاعبين على الخلية */}
+                        {playersHere.length > 0 && (
+                          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 flex">
+                            {playersHere.slice(0, 2).map((player, idx) => (
+                              <div
+                                key={idx}
+                                className={`w-4 h-4 rounded-full ${player.color} border border-white`}
+                                title={player.name}
+                              />
+                            ))}
+                            {playersHere.length > 2 && (
+                              <div className="w-4 h-4 rounded-full bg-gray-500 text-white text-[8px] flex items-center justify-center border border-white">
+                                +{playersHere.length - 2}
+                              </div>
+                            )}
+                          </div>
+                        )}
+                        
+                        {/* عرض أيقونات السلالم والثعابين */}
+                        {isLadder && (
+                          <div className="absolute bottom-1 right-1 text-lg" title={`سلم إلى ${snakesAndLadders.ladders[cellNumber as keyof typeof snakesAndLadders.ladders]}`}>
+                            🪜
+                          </div>
+                        )}
+                        
+                        {isSnake && (
+                          <div className="absolute bottom-1 right-1 text-lg" title={`ثعبان إلى ${snakesAndLadders.snakes[cellNumber as keyof typeof snakesAndLadders.snakes]}`}>
+                            🐍
+                          </div>
+                        )}
+                        
+                        {/* عرض رقم الخلية */}
+                        <span className="absolute top-1 left-1 text-xs font-bold bg-white bg-opacity-70 rounded-full w-5 h-5 flex items-center justify-center">
+                          {cellNumber}
+                        </span>
+                      </div>
+                    );
+                  })
+                ))}
+              </div>
             </div>
 
             {roomData.game_status === 'playing' && (
