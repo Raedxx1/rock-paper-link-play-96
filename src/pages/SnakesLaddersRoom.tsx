@@ -518,8 +518,8 @@ const SnakesLaddersRoom = () => {
                     const down = `${adjustedRowIndex * 9.7}%`;
                     const left = `${colIndex * 0}%`;
                     const right = `${colIndex * 9.7}%`;
-                    const width = '9.5%';
-                    const height = '9.5%';
+                    const width = '10%';
+                    const height = '10%';
                     
                     return (
                       <div
