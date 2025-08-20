@@ -493,7 +493,7 @@ const SnakesLaddersRoom = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="relative mb-4 mx-auto" style={{ maxWidth: '400px' }}>
+            <div className="relative mb-5 mx-auto" style={{ maxWidth: '400px' }}>
               {/* خلفية اللوحة */}
               <img 
                 src="/snakes-ladders-board.jpg" 
