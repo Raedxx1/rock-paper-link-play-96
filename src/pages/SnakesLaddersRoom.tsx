@@ -498,7 +498,7 @@ const SnakesLaddersRoom = () => {
               <img 
                 src="/snakes-ladders-board.jpg" 
                 alt="لوحة السلم والثعبان" 
-                className="w-full h-400 rounded-lg shadow-inner"
+                className="w-300 h-auto rounded-lg shadow-inner"
               />
               
               {/* شبكة الخلايا الشفافة فوق الخلفية */}
