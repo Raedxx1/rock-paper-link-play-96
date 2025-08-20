@@ -244,77 +244,157 @@ const SnakesLaddersRoom = () => {
     { name: roomData.player3_name, position: positions[2], active: !!roomData.player3_name, color: 'bg-green-500' },
     { name: roomData.player4_name, position: positions[3], active: !!roomData.player4_name, color: 'bg-yellow-500' },
   ];
+  const activePlayers = players.filter(p => p.active);
 
   return (
-    <div className="min-h-screen p-4">
-      <Card>
-        <CardContent>
-          <div className="relative mb-4 mx-auto" style={{ maxWidth: '500px' }}>
-            <img src="/snakes-ladders-board.jpg" alt="لوحة السلم والثعبان" className="w-full h-auto rounded-lg shadow-inner" />
-            
-            {/* شبكة الخلايا */}
-            <div className="absolute inset-0">
-              {boardLayout.map((row, rowIndex) => (
-                row.map((cellNumber, colIndex) => {
-                  const playersHere = players.filter(p => p.active && p.position === cellNumber);
-                  const isLadder = hasLadder(cellNumber);
-                  const isSnake = hasSnake(cellNumber);
+    <div className="min-h-screen bg-gradient-to-br from-orange-50 to-red-50 dark:from-gray-900 dark:to-gray-800 p-4" dir="rtl">
+      <div className="max-w-4xl mx-auto space-y-6">
+        
+        {/* شريط التنقل */}
+        <div className="flex justify-between items-center">
+          <Button onClick={() => navigate('/snakes-home')} variant="outline" size="sm">
+            <ArrowLeft className="ml-2 h-4 w-4" /> العودة
+          </Button>
+          
+          {(isHost || playerNumber === 1) && (
+            <Button onClick={shareRoom} variant="outline" size="sm">
+              <Copy className="ml-2 h-4 w-4" /> مشاركة الرابط
+            </Button>
+          )}
+        </div>
 
-                  const cellSize = 8; // حجم الخلية
-                  const top = `calc(${(9 - rowIndex) * 10}% + 1%)`;
-                  const left = `calc(${colIndex * 10}% + 1%)`;
-                  const width = `${cellSize}%`;
-                  const height = `${cellSize}%`;
-
-                  return (
-                    <div
-                      key={cellNumber}
-                      className="absolute border border-gray-400 border-opacity-20"
-                      style={{ top, left, width, height }}
+        {/* معلومات اللعبة */}
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-center space-y-2">
+              <h2 className="text-xl font-bold">🐍🪜 السلم والثعبان</h2>
+              <div className="flex justify-center space-x-6">
+                {players.map((player, index) => (
+                  player.active && (
+                    <div key={index} className={`text-center p-3 rounded-lg ${
+                        roomData.current_player_index === index && roomData.game_status === 'playing' 
+                          ? 'bg-orange-100 dark:bg-orange-900' 
+                          : 'bg-gray-100 dark:bg-gray-800'
+                      }`}
                     >
-                      {/* اللاعبين */}
-                      {playersHere.length > 0 && (
-                        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 flex">
-                          {playersHere.map((player, idx) => (
-                            <div key={idx} className={`w-3 h-3 rounded-full ${player.color} border border-white`} />
-                          ))}
-                        </div>
-                      )}
-                      {/* سلم أو ثعبان */}
-                      {(isLadder || isSnake) && (
-                        <div className={`absolute bottom-0 right-0 text-sm ${isLadder ? 'text-green-600' : 'text-red-600'}`}>
-                          {isLadder ? '🪜' : '🐍'}
-                        </div>
-                      )}
-                      {/* رقم الخلية */}
-                      <span className="absolute top-0 left-0 text-[10px] font-bold bg-white bg-opacity-70 rounded-full w-4 h-4 flex items-center justify-center">
-                        {cellNumber}
-                      </span>
+                      <div className="text-lg font-semibold">{player.name}</div>
+                      <div className="text-sm">المربع: {player.position}</div>
+                      <div className="text-xs text-gray-500">لاعب {index + 1}</div>
                     </div>
-                  );
-                })
+                  )
+                ))}
+              </div>
+              
+              {roomData.game_status === 'playing' && (
+                <div className="text-sm text-green-600 font-medium">
+                  دور: {players[roomData.current_player_index]?.name}
+                  {roomData.dice_value && ` - النرد: ${roomData.dice_value}`}
+                </div>
+              )}
+              
+              {roomData.game_status === 'finished' && roomData.winner && (
+                <div className="p-4 bg-green-100 dark:bg-green-900 rounded-lg">
+                  <p className="text-lg font-semibold">🎉 الفائز: {roomData.winner}</p>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* لوحة اللعبة */}
+        <Card>
+          <CardHeader className="text-center">
+            <CardTitle>
+              {roomData.game_status === 'waiting' ? '⏳ في انتظار اللاعبين...' : 
+               roomData.game_status === 'finished' ? '🎉 نهاية اللعبة!' : 
+               '🎲 دورك!'}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="relative mb-4 mx-auto" style={{ maxWidth: '500px' }}>
+              <img src="/snakes-ladders-board.jpg" alt="لوحة السلم والثعبان" className="w-full h-auto rounded-lg shadow-inner" />
+              
+              {/* شبكة الخلايا */}
+              <div className="absolute inset-0">
+                {boardLayout.map((row, rowIndex) => (
+                  row.map((cellNumber, colIndex) => {
+                    const playersHere = players.filter(p => p.active && p.position === cellNumber);
+
+                    const cellSize = 8;
+                    const top = `calc(${(9 - rowIndex) * 10}%)`;
+                    const left = `calc(${colIndex * 10}%)`;
+                    const width = `${cellSize}%`;
+                    const height = `${cellSize}%`;
+
+                    return (
+                      <div
+                        key={cellNumber}
+                        className="absolute"
+                        style={{ top, left, width, height }}
+                      >
+                        {/* اللاعبين */}
+                        {playersHere.length > 0 && (
+                          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 flex">
+                            {playersHere.map((player, idx) => (
+                              <div key={idx} className={`w-3 h-3 rounded-full ${player.color} border border-white`} />
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })
+                ))}
+              </div>
+            </div>
+
+            {roomData.game_status === 'playing' && (
+              <div className="text-center">
+                <Button 
+                  onClick={rollDice} 
+                  className="text-lg py-4 px-8 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white"
+                  disabled={playerNumber !== roomData.current_player_index + 1}
+                >
+                  🎲 رمي النرد
+                </Button>
+              </div>
+            )}
+
+            {roomData.game_status === 'finished' && (
+              <div className="text-center">
+                <Button onClick={resetGame} className="bg-gradient-to-r from-green-500 to-teal-500 hover:from-green-600 hover:to-teal-600 text-white">
+                  <RotateCcw className="ml-2 h-4 w-4" />
+                  لعبة جديدة
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* معلومات اللاعبين */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center">
+              <Users className="ml-2 h-5 w-5" />
+              اللاعبون ({activePlayers.length}/4)
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {players.map((player, index) => (
+                player.active && (
+                  <div key={index} className="flex justify-between items-center p-2 bg-gray-100 dark:bg-gray-800 rounded-lg">
+                    <div className="flex items-center">
+                      <div className={`w-3 h-3 rounded-full mr-2 ${player.color}`} />
+                      <span>{player.name}</span>
+                    </div>
+                    <span className="text-sm text-gray-500">لاعب {index + 1}</span>
+                  </div>
+                )
               ))}
             </div>
-          </div>
-
-          {roomData.game_status === 'playing' && (
-            <div className="text-center">
-              <Button onClick={rollDice} disabled={playerNumber !== roomData.current_player_index + 1}>
-                🎲 رمي النرد
-              </Button>
-            </div>
-          )}
-
-          {roomData.game_status === 'finished' && (
-            <div className="text-center">
-              <Button onClick={resetGame}>
-                <RotateCcw className="ml-2 h-4 w-4" />
-                لعبة جديدة
-              </Button>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 };
