@@ -24,6 +24,7 @@ interface SnakesLaddersRoom {
   winner: string | null;
   dice_value: number | null;
   created_at: string;
+  game_messages: string | null; // تم إضافة هذا الحقل
 }
 
 const SnakesLaddersRoom = () => {
@@ -45,7 +46,7 @@ const SnakesLaddersRoom = () => {
   const [gameMessages, setGameMessages] = useState([]);
   const messagesEndRef = useRef(null);
 
-  // تعريف الأصوات باستخدام المسارات العامة
+  // تعريف الأصوات باستخدام مسارات مطلقة
   const moveSound = '/sounds/move.mp3';
   const winSound = '/sounds/win.mp3';
   const ladderSound = '/sounds/ladder.mp3';
@@ -53,11 +54,52 @@ const SnakesLaddersRoom = () => {
   const diceSound = '/sounds/dice.mp3';
 
   // المراجع للأصوات
-  const moveSoundRef = useRef(new Audio(moveSound));
-  const winSoundRef = useRef(new Audio(winSound));
-  const ladderSoundRef = useRef(new Audio(ladderSound));
-  const snakeSoundRef = useRef(new Audio(snakeSound));
-  const diceSoundRef = useRef(new Audio(diceSound));
+  const moveSoundRef = useRef(null);
+  const winSoundRef = useRef(null);
+  const ladderSoundRef = useRef(null);
+  const snakeSoundRef = useRef(null);
+  const diceSoundRef = useRef(null);
+
+  // تهيئة عناصر الصوت بعد تحميل الصفحة
+  useEffect(() => {
+    moveSoundRef.current = new Audio(moveSound);
+    winSoundRef.current = new Audio(winSound);
+    ladderSoundRef.current = new Audio(ladderSound);
+    snakeSoundRef.current = new Audio(snakeSound);
+    diceSoundRef.current = new Audio(diceSound);
+
+    // تحديث مستوى الصوت بعد التهيئة
+    const sounds = [
+      moveSoundRef.current,
+      winSoundRef.current,
+      ladderSoundRef.current,
+      snakeSoundRef.current,
+      diceSoundRef.current
+    ];
+    
+    sounds.forEach(sound => {
+      if (sound) {
+        sound.volume = isMuted ? 0 : volume;
+      }
+    });
+  }, []);
+
+  // تحديث مستوى الصوت عند التغيير
+  useEffect(() => {
+    const sounds = [
+      moveSoundRef.current,
+      winSoundRef.current,
+      ladderSoundRef.current,
+      snakeSoundRef.current,
+      diceSoundRef.current
+    ];
+    
+    sounds.forEach(sound => {
+      if (sound) {
+        sound.volume = isMuted ? 0 : volume;
+      }
+    });
+  }, [volume, isMuted]);
 
   // تعريف السلالم والثعابين
   const snakesAndLadders = {
@@ -82,24 +124,9 @@ const SnakesLaddersRoom = () => {
     }
   };
 
-  // تحديث مستوى الصوت لجميع الأصوات
-  useEffect(() => {
-    const sounds = [
-      moveSoundRef.current,
-      winSoundRef.current,
-      ladderSoundRef.current,
-      snakeSoundRef.current,
-      diceSoundRef.current
-    ];
-    
-    sounds.forEach(sound => {
-      sound.volume = isMuted ? 0 : volume;
-    });
-  }, [volume, isMuted]);
-
   // دالة مساعدة لتشغيل الأصوات
   const playSound = (soundRef, restart = true) => {
-    if (isMuted) return;
+    if (isMuted || !soundRef.current) return;
     
     try {
       if (restart) {
@@ -116,25 +143,15 @@ const SnakesLaddersRoom = () => {
 
   // ✅ إحداثيات الخلايا تبدأ من أسفل يسار
   const boardLayout = [
-    // الصف 1 (الأسفل) - من اليسار إلى اليمين
     [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
-    // الصف 2 - من اليمين إلى اليسار
     [20, 19, 18, 17, 16, 15, 14, 13, 12, 11],
-    // الصف 3 - من اليسار إلى اليمين
     [21, 22, 23, 24, 25, 26, 27, 28, 29, 30],
-    // الصف 4 - من اليمين إلى اليسار
     [40, 39, 38, 37, 36, 35, 34, 33, 32, 31],
-    // الصف 5 - من اليسار إلى اليمين
     [41, 42, 43, 44, 45, 46, 47, 48, 49, 50],
-    // الصف 6 - من اليمين إلى اليسار
     [60, 59, 58, 57, 56, 55, 54, 53, 52, 51],
-    // الصف 7 - من اليسار إلى اليمين
     [61, 62, 63, 64, 65, 66, 67, 68, 69, 70],
-    // الصف 8 - من اليمين إلى اليسار
     [80, 79, 78, 77, 76, 75, 74, 73, 72, 71],
-    // الصف 9 - من اليسار إلى اليمين
     [81, 82, 83, 84, 85, 86, 87, 88, 89, 90],
-    // الصف 10 (الأعلى) - من اليمين إلى اليسار
     [100, 99, 98, 97, 96, 95, 94, 93, 92, 91]
   ];
 
@@ -147,15 +164,53 @@ const SnakesLaddersRoom = () => {
     scrollToBottom();
   }, [gameMessages]);
 
-  // إضافة رسالة جديدة للجميع
-  const addGameMessage = (message) => {
+  // إضافة رسالة جديدة للجميع ومزامنتها مع Supabase
+  const addGameMessage = async (message) => {
+    if (!roomCode) return;
+    
     const newMessage = {
       id: Date.now(),
       text: message,
-      timestamp: new Date().toLocaleTimeString()
+      timestamp: new Date().toLocaleTimeString(),
+      player: playerNumber ? `لاعب ${playerNumber}` : 'النظام'
     };
     
+    // تحديث الحالة المحلية أولاً
     setGameMessages(prev => [...prev, newMessage]);
+    
+    try {
+      // الحصول على الرسائل الحالية من قاعدة البيانات
+      const { data: room } = await supabase
+        .from('snakes_ladders_rooms')
+        .select('game_messages')
+        .eq('id', roomCode)
+        .single();
+      
+      let currentMessages = [];
+      if (room?.game_messages) {
+        try {
+          currentMessages = JSON.parse(room.game_messages);
+        } catch (e) {
+          console.error("Error parsing game messages:", e);
+          currentMessages = [];
+        }
+      }
+      
+      // إضافة الرسالة الجديدة
+      const updatedMessages = [...currentMessages, newMessage];
+      
+      // تحديث قاعدة البيانات
+      const { error } = await supabase
+        .from('snakes_ladders_rooms')
+        .update({ game_messages: JSON.stringify(updatedMessages) })
+        .eq('id', roomCode);
+      
+      if (error) {
+        console.error("Error updating game messages:", error);
+      }
+    } catch (error) {
+      console.error("Error in addGameMessage:", error);
+    }
   };
 
   const fetchRoomData = async () => {
@@ -185,6 +240,19 @@ const SnakesLaddersRoom = () => {
     if (data.player_positions) {
       const positions = JSON.parse(data.player_positions);
       setAnimatedPositions(positions);
+    }
+    
+    // تحديث الرسائل من Supabase
+    if (data.game_messages) {
+      try {
+        const messages = JSON.parse(data.game_messages);
+        setGameMessages(messages);
+      } catch (e) {
+        console.error("Error parsing game messages:", e);
+        setGameMessages([]);
+      }
+    } else {
+      setGameMessages([]);
     }
     
     setLoading(false);
@@ -235,6 +303,16 @@ const SnakesLaddersRoom = () => {
             if (newData.player_positions) {
               const positions = JSON.parse(newData.player_positions);
               setAnimatedPositions(positions);
+            }
+            
+            // تحديث الرسائل عند تلقي بيانات جديدة
+            if (newData.game_messages) {
+              try {
+                const messages = JSON.parse(newData.game_messages);
+                setGameMessages(messages);
+              } catch (e) {
+                console.error("Error parsing game messages:", e);
+              }
             }
             
             determinePlayerNumber(newData);
@@ -426,6 +504,9 @@ const SnakesLaddersRoom = () => {
       return;
     }
 
+    // إضافة رسالة ترحيب
+    addGameMessage(`🎮 ${playerName.trim()} انضم إلى اللعبة كلاعب ${playerNumber}!`);
+
     toast({
       title: "✅ تم الانضمام بنجاح!",
       description: "مرحباً بك في اللعبة"
@@ -478,7 +559,8 @@ const SnakesLaddersRoom = () => {
         current_player_index: 0,
         game_status: 'playing',
         winner: null,
-        dice_value: null
+        dice_value: null,
+        game_messages: JSON.stringify([])
       })
       .eq('id', roomCode);
 
@@ -491,6 +573,9 @@ const SnakesLaddersRoom = () => {
     } else {
       setGameMessages([]);
       setAnimatedPositions([0, 0, 0, 0]);
+      
+      // إضافة رسالة إعادة اللعبة
+      addGameMessage("🔄 تم إعادة تشغيل اللعبة!");
     }
   };
 
