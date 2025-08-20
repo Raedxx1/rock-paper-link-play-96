@@ -226,6 +226,7 @@ const SnakesLaddersRoom = () => {
     <div className="min-h-screen bg-gradient-to-br from-orange-50 to-red-50 dark:from-gray-900 dark:to-gray-800 p-4" dir="rtl">
       <div className="max-w-4xl mx-auto space-y-6">
 
+        {/* أزرار العودة والمشاركة */}
         <div className="flex justify-between items-center">
           <Button onClick={() => navigate('/snakes-home')} variant="outline" size="sm">
             <ArrowLeft className="ml-2 h-4 w-4" /> العودة
@@ -250,7 +251,94 @@ const SnakesLaddersRoom = () => {
           </Card>
         )}
 
-        {/* باقي واجهة اللعبة ... (نفس اللي كان عندك) */}
+        {/* اللوحة */}
+        <Card>
+          <CardHeader><CardTitle>🎲 لعبة السلم والثعبان</CardTitle></CardHeader>
+          <CardContent>
+            <div className="relative aspect-square w-full max-w-2xl mx-auto">
+              <img src="/snakes-ladders-board.png" alt="لوحة السلم والثعبان" className="w-full h-full object-contain" />
+              <div className="absolute inset-0">
+                {boardLayout.map((row, rowIndex) =>
+                  row.map((cellNumber, colIndex) => {
+                    const top = `${(9 - rowIndex) * 10}%`;
+                    const left = `${colIndex * 10}%`;
+                    const width = `10%`;
+                    const height = `10%`;
+
+                    const playersHere = activePlayers.filter(p => p.position === cellNumber);
+
+                    return (
+                      <div
+                        key={cellNumber}
+                        className="absolute"
+                        style={{ top, left, width, height }}
+                      >
+                        {playersHere.length > 0 && (
+                          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 flex">
+                            {playersHere.map((player, idx) => (
+                              <div key={idx} className={`w-3 h-3 rounded-full ${player.color} border border-white`} />
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* حالة اللعبة */}
+        <Card>
+          <CardContent>
+            {roomData.game_status === 'waiting' && (
+              <div className="text-center p-4">⏳ في انتظار لاعبين آخرين...</div>
+            )}
+            {roomData.game_status === 'playing' && (
+              <div className="text-center p-4">
+                🎲 الدور الحالي: {players[roomData.current_player_index].name}
+                {roomData.dice_value && <div className="mt-2">🎲 نتيجة النرد: {roomData.dice_value}</div>}
+              </div>
+            )}
+            {roomData.game_status === 'finished' && (
+              <div className="text-center p-4 text-xl font-bold">🏆 الفائز: {roomData.winner}</div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* أزرار التحكم */}
+        {roomData.game_status === 'playing' && (
+          <div className="flex justify-center space-x-4">
+            <Button onClick={rollDice}>🎲 رمي النرد</Button>
+            {(isHost || playerNumber === 1) && (
+              <Button onClick={resetGame} variant="outline">
+                <RotateCcw className="ml-2 h-4 w-4" /> إعادة اللعبة
+              </Button>
+            )}
+          </div>
+        )}
+
+        {/* اللاعبين */}
+        <Card>
+          <CardHeader><CardTitle><Users className="ml-2 inline h-4 w-4" /> اللاعبون</CardTitle></CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 gap-4">
+              {players.map((player, index) => (
+                player.active && (
+                  <div key={index} className="flex items-center justify-between p-2 bg-white dark:bg-gray-800 rounded-lg">
+                    <div className="flex items-center">
+                      <div className={`w-3 h-3 rounded-full mr-2 ${player.color}`} />
+                      <span>{player.name}</span>
+                    </div>
+                    <span className="text-sm text-gray-500">لاعب {index + 1}</span>
+                  </div>
+                )
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
       </div>
     </div>
   );
