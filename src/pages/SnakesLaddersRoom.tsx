@@ -25,7 +25,7 @@ interface SnakesLaddersRoom {
   dice_value: number | null;
   created_at: string;
   game_messages: string | null;
-  last_activity_at: string; // تم إضافة هذا الحقل
+  last_activity_at: string;
 }
 
 const SnakesLaddersRoom = () => {
@@ -43,11 +43,9 @@ const SnakesLaddersRoom = () => {
   const [availableSlots, setAvailableSlots] = useState<number[]>([]);
   
   const [sessionId] = useState(() => {
-    // حاول استعادة sessionId من localStorage إذا كان موجودًا
     const savedSessionId = localStorage.getItem(`snakes_session_${roomCode}`);
     if (savedSessionId) return savedSessionId;
     
-    // إذا لم يكن موجودًا، أنشئ sessionId جديدًا واحفظه
     const newSessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     if (roomCode) {
       localStorage.setItem(`snakes_session_${roomCode}`, newSessionId);
@@ -61,7 +59,7 @@ const SnakesLaddersRoom = () => {
   const messagesEndRef = useRef(null);
   const activityTimeoutRef = useRef(null);
 
-  // تعريف الأصوات باستخدام مسارات مطلقة
+  // تعريف الأصوات
   const moveSound = '/sounds/move.mp3';
   const winSound = '/sounds/win.mp3';
   const ladderSound = '/sounds/ladder.mp3';
@@ -75,7 +73,7 @@ const SnakesLaddersRoom = () => {
   const snakeSoundRef = useRef(null);
   const diceSoundRef = useRef(null);
 
-  // تهيئة عناصر الصوت بعد تحميل الصفحة
+  // تهيئة عناصر الصوت
   useEffect(() => {
     moveSoundRef.current = new Audio(moveSound);
     winSoundRef.current = new Audio(winSound);
@@ -83,7 +81,6 @@ const SnakesLaddersRoom = () => {
     snakeSoundRef.current = new Audio(snakeSound);
     diceSoundRef.current = new Audio(diceSound);
 
-    // تحديث مستوى الصوت بعد التهيئة
     const sounds = [
       moveSoundRef.current,
       winSoundRef.current,
@@ -98,14 +95,13 @@ const SnakesLaddersRoom = () => {
       }
     });
 
-    // إضافة event listener لفحص النشاط
+    // تفعيل تتبع النشاط
     const handleActivity = () => {
       if (roomCode && playerNumber) {
         updatePlayerActivity();
       }
     };
 
-    // تفعيل عند تحريك الماوس أو الضغط على أي مفتاح
     window.addEventListener('mousemove', handleActivity);
     window.addEventListener('keypress', handleActivity);
 
@@ -118,7 +114,7 @@ const SnakesLaddersRoom = () => {
     };
   }, []);
 
-  // تحديث مستوى الصوت عند التغيير
+  // تحديث مستوى الصوت
   useEffect(() => {
     const sounds = [
       moveSoundRef.current,
@@ -138,25 +134,21 @@ const SnakesLaddersRoom = () => {
   // تعريف السلالم والثعابين
   const snakesAndLadders = {
     ladders: {
-      1: 38,
-      4: 14,
-      9: 31,
-      21: 42,
-      28: 84,
-      51: 67,
-      80: 100,
-      71: 91
+      1: 38, 4: 14, 9: 31, 21: 42, 28: 84, 51: 67, 80: 100, 71: 91
     },
     snakes: {
-      17: 7,
-      54: 34,
-      62: 19,
-      64: 60,
-      87: 24,
-      93: 73,
-      98: 79
+      17: 7, 54: 34, 62: 19, 64: 60, 87: 24, 93: 73, 98: 79
     }
   };
+
+  // تمرير إلى آخر رسالة
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [gameMessages]);
 
   // دالة مساعدة لتشغيل الأصوات
   const playSound = (soundRef, restart = true) => {
@@ -175,7 +167,7 @@ const SnakesLaddersRoom = () => {
     }
   };
 
-  // ✅ إحداثيات الخلايا تبدأ من أسفل يسار
+  // إحداثيات الخلايا
   const boardLayout = [
     [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
     [20, 19, 18, 17, 16, 15, 14, 13, 12, 11],
@@ -188,15 +180,6 @@ const SnakesLaddersRoom = () => {
     [81, 82, 83, 84, 85, 86, 87, 88, 89, 90],
     [100, 99, 98, 97, 96, 95, 94, 93, 92, 91]
   ];
-
-  // تمرير إلى آخر رسالة
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
-
-  useEffect(() => {
-    scrollToBottom();
-  }, [gameMessages]);
 
   // تحديث نشاط اللاعب
   const updatePlayerActivity = async () => {
@@ -218,7 +201,7 @@ const SnakesLaddersRoom = () => {
     }, 1000);
   };
 
-  // إضافة رسالة جديدة للجميع ومزامنتها مع Supabase
+  // إضافة رسالة جديدة
   const addGameMessage = async (message) => {
     if (!roomCode) return;
     
@@ -229,11 +212,9 @@ const SnakesLaddersRoom = () => {
       player: playerNumber ? `لاعب ${playerNumber}` : 'النظام'
     };
     
-    // تحديث الحالة المحلية أولاً
     setGameMessages(prev => [...prev, newMessage]);
     
     try {
-      // الحصول على الرسائل الحالية من قاعدة البيانات
       const { data: room } = await supabase
         .from('snakes_ladders_rooms')
         .select('game_messages')
@@ -250,10 +231,8 @@ const SnakesLaddersRoom = () => {
         }
       }
       
-      // إضافة الرسالة الجديدة
       const updatedMessages = [...currentMessages, newMessage];
       
-      // تحديث قاعدة البيانات
       const { error } = await supabase
         .from('snakes_ladders_rooms')
         .update({ game_messages: JSON.stringify(updatedMessages) })
@@ -267,6 +246,7 @@ const SnakesLaddersRoom = () => {
     }
   };
 
+  // جلب بيانات الغرفة
   const fetchRoomData = async () => {
     if (!roomCode) return;
 
@@ -290,13 +270,11 @@ const SnakesLaddersRoom = () => {
 
     setRoomData(data as SnakesLaddersRoom);
     
-    // تحديث المواقع المتحركة عند تلقي بيانات جديدة
     if (data.player_positions) {
       const positions = JSON.parse(data.player_positions);
       setAnimatedPositions(positions);
     }
     
-    // تحديث الرسائل من Supabase
     if (data.game_messages) {
       try {
         const messages = JSON.parse(data.game_messages);
@@ -314,13 +292,13 @@ const SnakesLaddersRoom = () => {
     checkForInactivePlayers(data as SnakesLaddersRoom);
   };
 
+  // تحديد رقم اللاعب
   const determinePlayerNumber = (data: SnakesLaddersRoom) => {
     if (isHost) {
       setPlayerNumber(1);
       return;
     }
 
-    // التحقق أولاً إذا كان المستخدم لديه جلسة نشطة مسبقًا
     if (data.player2_session_id === sessionId) {
       setPlayerNumber(2);
     } else if (data.player3_session_id === sessionId) {
@@ -328,7 +306,6 @@ const SnakesLaddersRoom = () => {
     } else if (data.player4_session_id === sessionId) {
       setPlayerNumber(4);
     } else {
-      // إذا لم يكن لديه جلسة نشطة، ابحث عن أول slot متاح
       if (!data.player2_name || !data.player2_session_id) {
         setPlayerNumber(2);
       } else if (!data.player3_name || !data.player3_session_id) {
@@ -341,37 +318,33 @@ const SnakesLaddersRoom = () => {
     }
   };
 
-  // التحقق من اللاعبين غير النشطين وتحرير أماكنهم
+  // التحقق من اللاعبين غير النشطين
   const checkForInactivePlayers = async (data: SnakesLaddersRoom) => {
     const now = new Date();
     const inactivePlayers = [];
     const availableSlots = [];
 
-    // تحقق من كل لاعب إذا كان غير نشط لأكثر من 5 دقائق
     for (let i = 1; i <= 4; i++) {
       const playerName = data[`player${i}_name` as keyof SnakesLaddersRoom];
       const sessionId = data[`player${i}_session_id` as keyof SnakesLaddersRoom];
       
       if (playerName && sessionId) {
-        // إذا كان اللاعب غير المضيف، تحقق من وقت النشاط
         if (i > 1 || !isHost) {
           const lastActivity = new Date(data.last_activity_at || data.created_at);
           const minutesInactive = (now.getTime() - lastActivity.getTime()) / (1000 * 60);
           
-          if (minutesInactive > 5) { // 5 دقائق من عدم النشاط
+          if (minutesInactive > 5) {
             inactivePlayers.push(i);
             availableSlots.push(i);
           }
         }
       } else if (!playerName && !sessionId) {
-        // إذا كان المكان فارغًا
         availableSlots.push(i);
       }
     }
 
     setAvailableSlots(availableSlots);
 
-    // تحرير اللاعبين غير النشطين
     for (const playerNum of inactivePlayers) {
       try {
         await supabase
@@ -412,13 +385,11 @@ const SnakesLaddersRoom = () => {
             const newData = payload.new as SnakesLaddersRoom;
             setRoomData(newData);
             
-            // تحديث المواقع المتحركة عند تلقي بيانات جديدة
             if (newData.player_positions) {
               const positions = JSON.parse(newData.player_positions);
               setAnimatedPositions(positions);
             }
             
-            // تحديث الرسائل عند تلقي بيانات جديدة
             if (newData.game_messages) {
               try {
                 const messages = JSON.parse(newData.game_messages);
@@ -431,7 +402,6 @@ const SnakesLaddersRoom = () => {
             determinePlayerNumber(newData);
             checkForInactivePlayers(newData);
 
-            // تشغيل صوت الفوز إذا تم تحديد فائز
             if (newData.winner && (!roomData || !roomData.winner)) {
               playSound(winSoundRef);
             }
@@ -452,12 +422,11 @@ const SnakesLaddersRoom = () => {
     const direction = endPosition > startPosition ? 1 : -1;
     let currentStep = 0;
 
-    // تشغيل صوت الحركة عند كل خطوة
     const playMoveSound = () => {
       playSound(moveSoundRef);
     };
 
-    playMoveSound(); // تشغيل الصوت عند بدء الحركة
+    playMoveSound();
 
     const animationInterval = setInterval(() => {
       currentStep++;
@@ -469,7 +438,6 @@ const SnakesLaddersRoom = () => {
         return newPositions;
       });
 
-      // تشغيل صوت الحركة كل خطوتين
       if (currentStep % 2 === 0) {
         playMoveSound();
       }
@@ -477,18 +445,15 @@ const SnakesLaddersRoom = () => {
       if (currentStep >= steps) {
         clearInterval(animationInterval);
         
-        // إذا كانت حركة عادية (ليست سلم أو ثعبان)
         if (!isLadderOrSnake) {
           setIsAnimating(false);
-          
-          // التحقق من وجود سلم أو ثعبان في المربع الجديد
           const finalPosition = newPosition;
           checkForSnakeOrLadder(finalPosition, playerIndex);
         } else {
           setIsAnimating(false);
         }
       }
-    }, 300); // سرعة الحركة
+    }, 300);
   };
 
   // التحقق من وجود ثعبان أو سلم
@@ -497,7 +462,6 @@ const SnakesLaddersRoom = () => {
     let message = "";
     let targetPosition = position;
 
-    // التحقق من السلالم
     if (snakesAndLadders.ladders[position]) {
       targetPosition = snakesAndLadders.ladders[position];
       message = `🎉 ${playerName} صعد سلم من ${position} إلى ${targetPosition}!`;
@@ -508,16 +472,13 @@ const SnakesLaddersRoom = () => {
         description: `تقدمت من المربع ${position} إلى ${targetPosition}`
       });
       
-      // تشغيل صوت السلم
       playSound(ladderSoundRef);
       
-      // محاكاة الحركة للسلم
       setTimeout(() => {
         animateMovement(position, targetPosition, playerIndex, true);
         updatePositionInDatabase(playerIndex, targetPosition);
       }, 1000);
     }
-    // التحقق من الثعابين
     else if (snakesAndLadders.snakes[position]) {
       targetPosition = snakesAndLadders.snakes[position];
       message = `🐍 ${playerName} وقع في ثعبان من ${position} إلى ${targetPosition}!`;
@@ -528,16 +489,13 @@ const SnakesLaddersRoom = () => {
         description: `تراجعت من المربع ${position} إلى ${targetPosition}`
       });
       
-      // تشغيل صوت الثعبان
       playSound(snakeSoundRef);
       
-      // محاكاة الحركة للثعبان
       setTimeout(() => {
         animateMovement(position, targetPosition, playerIndex, true);
         updatePositionInDatabase(playerIndex, targetPosition);
       }, 1000);
     } else {
-      // إذا لم يكن هناك سلم أو ثعبان، تحديث الموضع مباشرة
       updatePositionInDatabase(playerIndex, position);
     }
   };
@@ -549,7 +507,6 @@ const SnakesLaddersRoom = () => {
     const positions = JSON.parse(roomData.player_positions || '[0,0,0,0]');
     positions[playerIndex] = newPosition;
     
-    // التحقق من الفائز
     let newGameStatus = roomData.game_status;
     let winner = null;
     
@@ -561,11 +518,9 @@ const SnakesLaddersRoom = () => {
       const winMessage = `🎉 ${winner} فاز باللعبة!`;
       addGameMessage(winMessage);
       
-      // تشغيل صوت الفوز
       playSound(winSoundRef);
     }
     
-    // حساب اللاعب التالي
     let nextPlayerIndex = (playerIndex + 1) % 4;
     const players = [
       roomData.player1_name,
@@ -585,7 +540,7 @@ const SnakesLaddersRoom = () => {
         current_player_index: newGameStatus === 'finished' ? playerIndex : nextPlayerIndex,
         game_status: newGameStatus,
         winner: winner,
-        last_activity_at: new Date().toISOString() // تحديث وقت النشاط
+        last_activity_at: new Date().toISOString()
       })
       .eq('id', roomCode);
 
@@ -619,10 +574,8 @@ const SnakesLaddersRoom = () => {
       return;
     }
 
-    // حفظ sessionId في localStorage
     localStorage.setItem(`snakes_session_${roomCode}`, sessionId);
 
-    // إضافة رسالة ترحيب
     addGameMessage(`🎮 ${playerName.trim()} انضم إلى اللعبة كلاعب ${playerNumber}!`);
 
     toast({
@@ -648,10 +601,8 @@ const SnakesLaddersRoom = () => {
         })
         .eq('id', roomCode);
 
-      // إضافة رسالة مغادرة
       addGameMessage(`👋 ${playerName} غادر اللعبة`);
 
-      // مسح sessionId من localStorage
       localStorage.removeItem(`snakes_session_${roomCode}`);
       
       toast({
@@ -683,15 +634,12 @@ const SnakesLaddersRoom = () => {
     const currentPosition = positions[currentPlayerIndex];
     const newPosition = currentPosition + diceValue;
     
-    // إضافة رسالة الرمية
     const playerName = roomData[`player${currentPlayerIndex + 1}_name`];
     const rollMessage = `🎲 ${playerName} رمى النرد وحصل على ${diceValue}!`;
     addGameMessage(rollMessage);
     
-    // تشغيل صوت النرد
     playSound(diceSoundRef);
     
-    // تحديث قيمة النرد في قاعدة البيانات
     await supabase
       .from('snakes_ladders_rooms')
       .update({ 
@@ -700,7 +648,6 @@ const SnakesLaddersRoom = () => {
       })
       .eq('id', roomCode);
 
-    // بدء الحركة السلسة
     animateMovement(currentPosition, newPosition, currentPlayerIndex);
   };
 
@@ -730,7 +677,6 @@ const SnakesLaddersRoom = () => {
       setGameMessages([]);
       setAnimatedPositions([0, 0, 0, 0]);
       
-      // إضافة رسالة إعادة اللعبة
       addGameMessage("🔄 تم إعادة تشغيل اللعبة!");
     }
   };
@@ -959,6 +905,8 @@ const SnakesLaddersRoom = () => {
             </CardContent>
           </Card>
 
+          {/* لوحة اللعبة */}
+          <Card>
             <CardHeader className="text-center">
               <CardTitle>
                 {roomData.game_status === 'waiting' ? '⏳ في انتظار اللاعبين...' : 
