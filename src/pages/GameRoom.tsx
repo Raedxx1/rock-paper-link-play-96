@@ -25,6 +25,7 @@ interface GameRoom {
   game_status: 'waiting' | 'playing' | 'round_complete' | 'game_complete';
   winner: 'player1' | 'player2' | 'tie' | null;
   round_winner: 'player1' | 'player2' | 'tie' | null;
+  last_activity_at?: string; // تمت إضافة هذا الحقل
 }
 
 const GameRoom = () => {
@@ -37,9 +38,24 @@ const GameRoom = () => {
   const [playerName, setPlayerName] = useState('');
   const [isPlayer2, setIsPlayer2] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [isMakingChoice, setIsMakingChoice] = useState(false);
   
   // إنشاء session ID فريد لهذا المستخدم
   const [sessionId] = useState(() => `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`);
+
+  // دالة مساعدة لتحديث وقت النشاط
+  const updateLastActivity = async () => {
+    if (!roomCode) return;
+    
+    try {
+      await supabase
+        .from('game_rooms')
+        .update({ last_activity_at: new Date().toISOString() })
+        .eq('id', roomCode);
+    } catch (error) {
+      console.error("Error updating last activity:", error);
+    }
+  };
 
   // جلب بيانات الغرفة
   const fetchRoomData = async () => {
@@ -69,13 +85,10 @@ const GameRoom = () => {
     // تحديد دور اللاعب
     if (!isHost) {
       if (!data.player2_name) {
-        // إذا لم يكن هناك لاعب ثاني، يمكن لهذا الشخص أن يكون اللاعب الثاني
         setIsPlayer2(true);
       } else if (data.player2_session_id === sessionId) {
-        // إذا كان session ID يطابق، فهذا هو اللاعب الثاني الفعلي
         setIsPlayer2(true);
       } else {
-        // إذا كان هناك لاعب ثاني ولكن session ID لا يطابق، فهذا ليس اللاعب الثاني
         setIsPlayer2(false);
       }
     }
@@ -130,13 +143,15 @@ const GameRoom = () => {
   const joinAsPlayer2 = async () => {
     if (!playerName.trim() || !roomCode) return;
 
+    setIsMakingChoice(true);
     // الانضمام للغرفة مع session ID
     const { data: updateResult, error } = await supabase
       .from('game_rooms')
       .update({
         player2_name: playerName.trim(),
         player2_session_id: sessionId,
-        game_status: 'playing'
+        game_status: 'playing',
+        last_activity_at: new Date().toISOString() // تحديث وقت النشاط
       })
       .eq('id', roomCode)
       .is('player2_name', null) // التأكد من أن الغرفة فارغة
@@ -150,6 +165,7 @@ const GameRoom = () => {
       });
       // إعادة تحميل بيانات الغرفة
       fetchRoomData();
+      setIsMakingChoice(false);
       return;
     }
 
@@ -158,11 +174,12 @@ const GameRoom = () => {
       title: "✅ تم الانضمام بنجاح!",
       description: "مرحباً بك في اللعبة"
     });
+    setIsMakingChoice(false);
   };
 
   // اختيار الحركة
   const makeChoice = async (choice: Choice) => {
-    if (!roomData || !roomCode) return;
+    if (!roomData || !roomCode || isMakingChoice) return;
 
     // التحقق من أن الشخص له صلاحية اللعب
     if (!isHost && isPlayer2 && roomData.player2_session_id !== sessionId) {
@@ -176,11 +193,15 @@ const GameRoom = () => {
       return;
     }
 
+    setIsMakingChoice(true);
     const updateField = isHost || !isPlayer2 ? 'player1_choice' : 'player2_choice';
     
     const { error } = await supabase
       .from('game_rooms')
-      .update({ [updateField]: choice })
+      .update({ 
+        [updateField]: choice,
+        last_activity_at: new Date().toISOString() // تحديث وقت النشاط
+      })
       .eq('id', roomCode);
 
     if (error) {
@@ -190,6 +211,7 @@ const GameRoom = () => {
         variant: "destructive"
       });
     }
+    setIsMakingChoice(false);
   };
 
   // تحديد الفائز في الجولة
@@ -235,7 +257,8 @@ const GameRoom = () => {
             player1_score: newPlayer1Score,
             player2_score: newPlayer2Score,
             winner: gameWinner,
-            game_status: newGameStatus
+            game_status: newGameStatus,
+            last_activity_at: new Date().toISOString() // تحديث وقت النشاط
           })
           .eq('id', roomCode);
 
@@ -264,7 +287,8 @@ const GameRoom = () => {
         player2_choice: null,
         round_winner: null,
         current_round: (roomData?.current_round || 1) + 1,
-        game_status: 'playing'
+        game_status: 'playing',
+        last_activity_at: new Date().toISOString() // تحديث وقت النشاط
       })
       .eq('id', roomCode);
 
@@ -291,7 +315,8 @@ const GameRoom = () => {
         current_round: 1,
         round_winner: null,
         winner: null,
-        game_status: 'playing'
+        game_status: 'playing',
+        last_activity_at: new Date().toISOString() // تحديث وقت النشاط
       })
       .eq('id', roomCode);
 
@@ -393,9 +418,9 @@ const GameRoom = () => {
             <Button 
               onClick={joinAsPlayer2} 
               className="w-full"
-              disabled={!playerName.trim()}
+              disabled={!playerName.trim() || isMakingChoice}
             >
-              انضم للعبة
+              {isMakingChoice ? 'جاري الانضمام...' : 'انضم للعبة'}
             </Button>
           </CardContent>
         </Card>
@@ -500,7 +525,7 @@ const GameRoom = () => {
                   <p className="text-sm text-gray-500">ستتمكن من اللعب بعد أن يختار</p>
                 </div>
               ) : (
-                <GameChoice onChoice={makeChoice} />
+                <GameChoice onChoice={makeChoice} disabled={isMakingChoice} />
               )}
             </CardContent>
           </Card>
