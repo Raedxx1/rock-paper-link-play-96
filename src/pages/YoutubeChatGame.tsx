@@ -17,6 +17,34 @@ interface YoutubeChatRoom {
   last_checked: string;
 }
 
+// 🔹 دالة لاستخراج videoId من أي رابط YouTube
+function extractVideoId(urlOrId: string): string | null {
+  if (!urlOrId) return null;
+
+  // إذا أدخل ID مباشر
+  if (/^[a-zA-Z0-9_-]{11}$/.test(urlOrId)) {
+    return urlOrId;
+  }
+
+  try {
+    const parsedUrl = new URL(urlOrId);
+
+    // روابط youtube.com
+    if (parsedUrl.hostname.includes("youtube.com")) {
+      return parsedUrl.searchParams.get("v");
+    }
+
+    // روابط youtu.be
+    if (parsedUrl.hostname === "youtu.be") {
+      return parsedUrl.pathname.substring(1);
+    }
+  } catch {
+    return null;
+  }
+
+  return null;
+}
+
 const YoutubeChatGame = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -27,9 +55,8 @@ const YoutubeChatGame = () => {
   const [loading, setLoading] = useState(true);
   const [checking, setChecking] = useState(false);
 
-// 🔑 هنا المفتاح ثابت داخل الكود
-const YOUTUBE_API_KEY = "AIzaSyBIuk3jEwfWwGpV6G3mY8jx2Otwbptj00A";
-
+  // 🔑 مفتاح API ثابت
+  const YOUTUBE_API_KEY = "AIzaSyBIuk3jEwfWwGpV6G3mY8jx2Otwbptj00A";
 
   useEffect(() => {
     if (!roomCode) {
@@ -81,44 +108,54 @@ const YOUTUBE_API_KEY = "AIzaSyBIuk3jEwfWwGpV6G3mY8jx2Otwbptj00A";
       return;
     }
 
-    setRoomData(data as YoutubeChatRoom);
+    // ✅ تعديل الفيديو ID بشكل تلقائي
+    const videoId = extractVideoId(data.youtube_url || data.youtube_video_id);
+    if (!videoId) {
+      toast({
+        title: "❌ رابط فيديو غير صالح",
+        description: "تأكد من رابط YouTube",
+        variant: "destructive"
+      });
+    }
+
+    setRoomData({
+      ...data,
+      youtube_video_id: videoId || ''
+    } as YoutubeChatRoom);
+
     setLoading(false);
   };
 
   const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
   const checkYouTubeComments = async () => {
-    if (!roomData || roomData.winners.length >= 3) return;
+    if (!roomData || !roomData.youtube_video_id || roomData.winners.length >= 3) {
+      toast({
+        title: "⚠️ لا يوجد فيديو صالح",
+        description: "تأكد من وجود videoId صحيح",
+        variant: "destructive"
+      });
+      return;
+    }
     
     setChecking(true);
     
     try {
-      let retries = 2; // عدد المحاولات إذا فشل الطلب
-      let data: any = null;
+      const response = await fetch(
+        `https://www.googleapis.com/youtube/v3/commentThreads?part=snippet&videoId=${roomData.youtube_video_id}&key=${YOUTUBE_API_KEY}&maxResults=100`
+      );
 
-      while (retries > 0) {
-        const response = await fetch(
-  `https://www.googleapis.com/youtube/v3/commentThreads?part=snippet&videoId=${roomData.youtube_video_id}&key=${YOUTUBE_API_KEY}&maxResults=100`
-);
-
-
-        if (response.ok) {
-          data = await response.json();
-          break;
-        } else {
-          retries--;
-          if (retries === 0) {
-            const errorData = await response.json();
-            throw new Error(errorData.error?.message || `خطأ في API: ${response.status}`);
-          }
-          await delay(500); // انتظر نصف ثانية قبل إعادة المحاولة
-        }
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error?.message || `خطأ في API: ${response.status}`);
       }
       
-      if (data?.items?.length > 0) {
+      const data = await response.json();
+
+      if (data.items && data.items.length > 0) {
         const newWinners = [...roomData.winners];
         let winnersAdded = 0;
-        
+
         for (const item of data.items) {
           const comment = item.snippet.topLevelComment.snippet;
           const author = comment.authorDisplayName;
@@ -130,7 +167,7 @@ const YOUTUBE_API_KEY = "AIzaSyBIuk3jEwfWwGpV6G3mY8jx2Otwbptj00A";
             if (commentDate <= lastCheckedDate) continue;
           }
 
-          const isCorrect = roomData.correct_answers.some(answer => 
+          const isCorrect = roomData.correct_answers.some(answer =>
             answer.trim() !== '' && text.toLowerCase().includes(answer.toLowerCase())
           );
 
@@ -145,7 +182,7 @@ const YOUTUBE_API_KEY = "AIzaSyBIuk3jEwfWwGpV6G3mY8jx2Otwbptj00A";
 
           if (newWinners.length >= 3) break;
         }
-        
+
         if (winnersAdded > 0) {
           const { error } = await supabase
             .from('youtube_chat_rooms')
@@ -154,7 +191,7 @@ const YOUTUBE_API_KEY = "AIzaSyBIuk3jEwfWwGpV6G3mY8jx2Otwbptj00A";
               last_checked: new Date().toISOString()
             })
             .eq('id', roomCode);
-            
+
           if (error) {
             console.error('Error updating winners:', error);
             toast({
@@ -177,32 +214,11 @@ const YOUTUBE_API_KEY = "AIzaSyBIuk3jEwfWwGpV6G3mY8jx2Otwbptj00A";
       }
     } catch (error: any) {
       console.error('Error checking YouTube comments:', error);
-      
-      if (error.message?.includes('quota')) {
-        toast({
-          title: "❌ تجاوز الحد المسموح",
-          description: "تم تجاوز عدد الطلبات المسموحة لليوم، حاول غداً",
-          variant: "destructive"
-        });
-      } else if (error.message?.includes('API key')) {
-        toast({
-          title: "❌ مفتاح API غير صالح",
-          description: "يجب تحديث مفتاح YouTube API",
-          variant: "destructive"
-        });
-      } else if (error.message?.includes('disabled')) {
-        toast({
-          title: "❌ API غير مفعل",
-          description: "يجب تفعيل YouTube Data API",
-          variant: "destructive"
-        });
-      } else {
-        toast({
-          title: "❌ خطأ في جلب التعليقات",
-          description: error.message || "تأكد من صحة رابط الفيديو",
-          variant: "destructive"
-        });
-      }
+      toast({
+        title: "❌ خطأ في جلب التعليقات",
+        description: error.message || "تأكد من صحة رابط الفيديو",
+        variant: "destructive"
+      });
     } finally {
       setChecking(false);
       await delay(1000);
@@ -234,11 +250,11 @@ const YOUTUBE_API_KEY = "AIzaSyBIuk3jEwfWwGpV6G3mY8jx2Otwbptj00A";
     );
   }
 
-  if (!roomData) {
+  if (!roomData || !roomData.youtube_video_id) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-purple-50" dir="rtl">
         <div className="text-center">
-          <p className="text-lg text-gray-600 mb-4">❌ الغرفة غير موجودة</p>
+          <p className="text-lg text-gray-600 mb-4">❌ الفيديو غير صالح</p>
           <Button onClick={() => navigate('/')}>العودة للرئيسية</Button>
         </div>
       </div>
