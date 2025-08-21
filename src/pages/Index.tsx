@@ -219,7 +219,7 @@ const Index = () => {
               العاب XDreemB52
             </h1>
           </div>
-          <p className="text-xl text-white/90 drop-shadow-md">منصة الألعاب العربية - العب مع أصدقائك أونلاين!</p>
+          <p className="text-xl text-white/90 drop-shadow-md">منصة العاب وفعاليات مجتمع اكس دريم - العب مع أصدقائك أونلاين!</p>
         </div>
 
         {/* معلومات المطور وإحصائيات اليوتيوب */}
