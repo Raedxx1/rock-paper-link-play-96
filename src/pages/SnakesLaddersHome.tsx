@@ -139,7 +139,15 @@ const SnakesLaddersHome = () => {
               placeholder="أدخل اسمك هنا"
             />
           </div>
-          
+          <Button 
+  onClick={() => navigate('Index')} 
+  variant="outline" 
+  className="absolute top-4 left-4"
+  size="sm"
+>
+  <HomeIcon className="ml-2 h-4 w-4" />
+  الرئيسية
+</Button>
           <div className="pt-4">
             <Button 
               onClick={createNewGame} 
