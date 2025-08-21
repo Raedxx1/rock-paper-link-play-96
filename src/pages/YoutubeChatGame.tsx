@@ -27,8 +27,9 @@ const YoutubeChatGame = () => {
   const [loading, setLoading] = useState(true);
   const [checking, setChecking] = useState(false);
 
-  // استخدام مفتاح YouTube API الجديد
-  const YOUTUBE_API_KEY = 'AIzaSyBIuk3jEwfWwGpV6G3mY8jx2Otwbptj00A';
+// 🔑 هنا المفتاح ثابت داخل الكود
+const YOUTUBE_API_KEY = "AIzaSyBIuk3jEwfWwGpV6G3mY8jx2Otwbptj00A";
+
 
   useEffect(() => {
     if (!roomCode) {
@@ -84,7 +85,6 @@ const YoutubeChatGame = () => {
     setLoading(false);
   };
 
-  // دالة للتأخير
   const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
   const checkYouTubeComments = async () => {
@@ -93,55 +93,59 @@ const YoutubeChatGame = () => {
     setChecking(true);
     
     try {
-      const response = await fetch(
-        `https://www.googleapis.com/youtube/v3/commentThreads?part=snippet&videoId=${roomData.youtube_video_id}&key=${YOUTUBE_API_KEY}&maxResults=100`
-      );
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error?.message || `خطأ في API: ${response.status}`);
+      let retries = 2; // عدد المحاولات إذا فشل الطلب
+      let data: any = null;
+
+      while (retries > 0) {
+        const response = await fetch(
+  `https://www.googleapis.com/youtube/v3/commentThreads?part=snippet&videoId=${roomData.youtube_video_id}&key=${YOUTUBE_API_KEY}&maxResults=100`
+);
+
+
+        if (response.ok) {
+          data = await response.json();
+          break;
+        } else {
+          retries--;
+          if (retries === 0) {
+            const errorData = await response.json();
+            throw new Error(errorData.error?.message || `خطأ في API: ${response.status}`);
+          }
+          await delay(500); // انتظر نصف ثانية قبل إعادة المحاولة
+        }
       }
       
-      const data = await response.json();
-      
-      if (data.items && data.items.length > 0) {
+      if (data?.items?.length > 0) {
         const newWinners = [...roomData.winners];
         let winnersAdded = 0;
         
-        // التحقق من كل تعليق
         for (const item of data.items) {
           const comment = item.snippet.topLevelComment.snippet;
           const author = comment.authorDisplayName;
           const text = comment.textDisplay;
-          
-          // تخطي التعليقات القديمة إذا كانت آخر مرة تحقق فيها محددة
+
           if (roomData.last_checked) {
             const commentDate = new Date(comment.publishedAt);
             const lastCheckedDate = new Date(roomData.last_checked);
             if (commentDate <= lastCheckedDate) continue;
           }
-          
-          // التحقق إذا كانت الإجابة صحيحة
+
           const isCorrect = roomData.correct_answers.some(answer => 
             answer.trim() !== '' && text.toLowerCase().includes(answer.toLowerCase())
           );
-          
-          // إذا كانت الإجابة صحيحة ولم يكن اللاعب فائزاً بعد
+
           if (isCorrect && !newWinners.includes(author) && newWinners.length < 3) {
             newWinners.push(author);
             winnersAdded++;
-            
             toast({
               title: "🎉 فائز جديد!",
               description: `${author} أجاب إجابة صحيحة!`
             });
           }
-          
-          // إذا وصلنا إلى 3 فائزين، نتوقف
+
           if (newWinners.length >= 3) break;
         }
         
-        // تحديث قاعدة البيانات بالفائزين الجدد
         if (winnersAdded > 0) {
           const { error } = await supabase
             .from('youtube_chat_rooms')
@@ -171,22 +175,22 @@ const YoutubeChatGame = () => {
           description: "لم يتم العثور على أي تعليقات في هذا الفيديو",
         });
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error checking YouTube comments:', error);
       
-      if (error.message.includes('quota')) {
+      if (error.message?.includes('quota')) {
         toast({
           title: "❌ تجاوز الحد المسموح",
           description: "تم تجاوز عدد الطلبات المسموحة لليوم، حاول غداً",
           variant: "destructive"
         });
-      } else if (error.message.includes('API key')) {
+      } else if (error.message?.includes('API key')) {
         toast({
           title: "❌ مفتاح API غير صالح",
           description: "يجب تحديث مفتاح YouTube API",
           variant: "destructive"
         });
-      } else if (error.message.includes('disabled')) {
+      } else if (error.message?.includes('disabled')) {
         toast({
           title: "❌ API غير مفعل",
           description: "يجب تفعيل YouTube Data API",
@@ -201,7 +205,6 @@ const YoutubeChatGame = () => {
       }
     } finally {
       setChecking(false);
-      // إضافة تأخير لتجنب تجاوز حصص API
       await delay(1000);
     }
   };
@@ -214,7 +217,7 @@ const YoutubeChatGame = () => {
         title: "✅ تم نسخ الرابط!",
         description: "شارك الرابط مع أصدقائك",
       });
-    } catch (err) {
+    } catch {
       toast({
         title: "❌ فشل في نسخ الرابط",
         description: "حاول نسخه يدوياً",
@@ -225,46 +228,33 @@ const YoutubeChatGame = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 flex items-center justify-center" dir="rtl">
-        <div className="text-center">
-          <div className="text-4xl mb-4">⏳</div>
-          <p className="text-lg text-gray-600">جارٍ تحميل الغرفة...</p>
-        </div>
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-purple-50" dir="rtl">
+        <p className="text-lg text-gray-600">⏳ جارٍ تحميل الغرفة...</p>
       </div>
     );
   }
 
   if (!roomData) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 flex items-center justify-center" dir="rtl">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-purple-50" dir="rtl">
         <div className="text-center">
-          <div className="text-4xl mb-4">❌</div>
-          <p className="text-lg text-gray-600">الغرفة غير موجودة</p>
-          <Button onClick={() => navigate('/')} className="mt-4">
-            العودة للرئيسية
-          </Button>
+          <p className="text-lg text-gray-600 mb-4">❌ الغرفة غير موجودة</p>
+          <Button onClick={() => navigate('/')}>العودة للرئيسية</Button>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 dark:from-gray-900 dark:to-gray-800 p-4" dir="rtl">
+    <div className="min-h-screen p-4 bg-gradient-to-br from-blue-50 to-purple-50 dark:from-gray-900 dark:to-gray-800" dir="rtl">
       <div className="max-w-4xl mx-auto space-y-6">
         {/* شريط التنقل */}
         <div className="flex justify-between items-center">
-          <Button 
-            onClick={() => navigate('/')} 
-            variant="outline" 
-            size="sm"
-          >
-            <ArrowLeft className="ml-2 h-4 w-4" />
-            الرئيسية
+          <Button onClick={() => navigate('/')} variant="outline" size="sm">
+            <ArrowLeft className="ml-2 h-4 w-4" /> الرئيسية
           </Button>
-          
           <Button onClick={shareRoom} variant="outline" size="sm">
-            <Copy className="ml-2 h-4 w-4" />
-            مشاركة الرابط
+            <Copy className="ml-2 h-4 w-4" /> مشاركة الرابط
           </Button>
         </div>
 
@@ -272,10 +262,9 @@ const YoutubeChatGame = () => {
         <Card>
           <CardHeader className="text-center">
             <CardTitle className="flex items-center justify-center gap-2">
-              <Youtube className="h-6 w-6 text-red-500" />
-              لعبة شات يوتيوب
+              <Youtube className="h-6 w-6 text-red-500" /> لعبة شات يوتيوب
             </CardTitle>
-            <CardDescription>أول 3 يكتبون الإجابة الصحيحة في تعليقات اليوتيوب يفوزون!</CardDescription>
+            <CardDescription>أول 3 يكتبون الإجابة الصحيحة في التعليقات يفوزون!</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="aspect-video mb-4">
@@ -283,33 +272,14 @@ const YoutubeChatGame = () => {
                 width="100%"
                 height="100%"
                 src={`https://www.youtube.com/embed/${roomData.youtube_video_id}?autoplay=1&rel=0`}
-                title="YouTube video player"
+                title="YouTube video"
                 frameBorder="0"
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                 allowFullScreen
-                onError={(e) => {
-                  console.error("Error loading YouTube video:", e);
-                  toast({
-                    title: "❌ خطأ في تحميل الفيديو",
-                    description: "قد يكون الفيديو غير متاح في منطقتك",
-                    variant: "destructive"
-                  });
-                }}
               ></iframe>
             </div>
-            
             <div className="text-center text-sm text-gray-600 mb-4">
-              البث المباشر hosted by: {roomData.player1_name}
-            </div>
-
-            <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
-              <h3 className="font-semibold text-yellow-800 mb-2">كيفية اللعب:</h3>
-              <ol className="list-decimal list-inside text-yellow-700 space-y-1 text-sm">
-                <li>اذهب إلى فيديو اليوتيوب أعلاه</li>
-                <li>اكتب الإجابة الصحيحة في قسم التعليقات</li>
-                <li>أول 3 أشخاص يكتبون الإجابة الصحيحة سيظهرون هنا كفائزين</li>
-                <li>الإجابات الصحيحة المقبولة: {roomData.correct_answers.join(' أو ')}</li>
-              </ol>
+              البث المباشر بواسطة: {roomData.player1_name}
             </div>
           </CardContent>
         </Card>
@@ -327,7 +297,7 @@ const YoutubeChatGame = () => {
                 className="w-full"
               >
                 <RefreshCw className={`ml-2 h-4 w-4 ${checking ? 'animate-spin' : ''}`} />
-                {checking ? 'جاري التحقق من التعليقات...' : 'تحقق من التعليقات الجديدة'}
+                {checking ? 'جاري التحقق...' : 'تحقق من التعليقات الجديدة'}
               </Button>
               {roomData.last_checked && (
                 <p className="text-sm text-gray-500 mt-2">
@@ -342,8 +312,7 @@ const YoutubeChatGame = () => {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Crown className="h-5 w-5 text-yellow-500" />
-              الفائزون
+              <Crown className="h-5 w-5 text-yellow-500" /> الفائزون
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -352,12 +321,11 @@ const YoutubeChatGame = () => {
             ) : (
               <div className="space-y-2">
                 {roomData.winners.map((winner, index) => (
-                  <div key={index} className="flex items-center gap-2 p-2 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-gray-800 dark:to-gray-700 rounded-lg">
+                  <div key={index} className="flex items-center gap-2 p-2 rounded-lg bg-gradient-to-r from-blue-50 to-purple-50 dark:from-gray-800 dark:to-gray-700">
                     <div className="w-8 h-8 flex items-center justify-center bg-yellow-500 text-white rounded-full">
                       {index + 1}
                     </div>
                     <span className="font-medium">{winner}</span>
-                    <span className="text-sm text-gray-500">(من يوتيوب)</span>
                   </div>
                 ))}
               </div>
