@@ -1,8 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Plus, Gamepad2, Users, Crown, Sparkles, Zap, Star, Info } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Plus, Gamepad2, Users, Crown, Sparkles, Zap, Star, Trash2, Youtube } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { ThemeToggle } from '@/components/ThemeToggle';
@@ -37,6 +39,9 @@ const drawings = [
 const Index = () => {
   const navigate = useNavigate();
   const [roomLink, setRoomLink] = useState<string>('');
+  const [youtubeUrl, setYoutubeUrl] = useState('');
+  const [correctAnswers, setCorrectAnswers] = useState<string[]>(['']);
+  const [showYoutubeForm, setShowYoutubeForm] = useState(false);
 
   const generateRoomCode = (gameType: string) => {
     const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
@@ -48,6 +53,8 @@ const Index = () => {
       result = 'xo-';
     } else if (gameType === 'snakes') {
       result = 'snk-';
+    } else if (gameType === 'youtube') {
+      result = 'yt-';
     }
     
     for (let i = 0; i < 5; i++) {
@@ -56,7 +63,44 @@ const Index = () => {
     return result;
   };
 
+  const addAnswerField = () => {
+    setCorrectAnswers([...correctAnswers, '']);
+  };
+
+  const removeAnswerField = (index: number) => {
+    if (correctAnswers.length <= 1) return;
+    const newAnswers = [...correctAnswers];
+    newAnswers.splice(index, 1);
+    setCorrectAnswers(newAnswers);
+  };
+
+  const updateAnswer = (index: number, value: string) => {
+    const newAnswers = [...correctAnswers];
+    newAnswers[index] = value;
+    setCorrectAnswers(newAnswers);
+  };
+
   const createNewGame = async (gameType: string) => {
+    if (gameType === 'youtube') {
+      if (!youtubeUrl) {
+        toast({
+          title: "❌ يرجى إدخال رابط اليوتيوب",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      // تحقق من وجود إجابات صحيحة
+      const validAnswers = correctAnswers.filter(answer => answer.trim() !== '');
+      if (validAnswers.length === 0) {
+        toast({
+          title: "❌ يرجى إدخال إجابة صحيحة واحدة على الأقل",
+          variant: "destructive"
+        });
+        return;
+      }
+    }
+
     const roomCode = generateRoomCode(gameType);
     
     try {
@@ -78,6 +122,11 @@ const Index = () => {
         gameData.board_state = JSON.stringify(Array(100).fill(0));
         gameData.current_player_index = 0;
         gameData.max_players = 4;
+      } else if (gameType === 'youtube') {
+        tableName = 'youtube_chat_rooms';
+        gameData.youtube_url = youtubeUrl;
+        gameData.correct_answers = correctAnswers.filter(answer => answer.trim() !== '');
+        gameData.winners = [];
       }
 
       const { error } = await supabase
@@ -99,6 +148,8 @@ const Index = () => {
         navigate(`/tic-tac-toe?r=${roomCode}&host=true`);
       } else if (gameType === 'snakes') {
         navigate(`/snakes-ladders?r=${roomCode}&host=true`);
+      } else if (gameType === 'youtube') {
+        navigate(`/youtube-chat?r=${roomCode}&host=true`);
       }
     } catch (error) {
       toast({
@@ -148,12 +199,6 @@ const Index = () => {
         <div className="bg-yellow-500/80 text-black font-bold px-4 py-2 rounded-lg mb-4 flex items-center gap-2">
           <Zap className="h-4 w-4" />
           أفضل الميمزات
-          <div className="tooltip-container relative group">
-            <Info className="h-3 w-3 cursor-help" />
-            <div className="tooltip absolute left-0 bottom-full mb-2 w-48 p-2 bg-black/90 text-white text-xs rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 z-50">
-              هذه أفضل الميمزات التي تم إنشاؤها بواسطة مجتمع اكس دريم
-            </div>
-          </div>
         </div>
         <div className="h-full w-full overflow-hidden">
           <div className="h-full animate-vertical-scroll">
@@ -177,12 +222,6 @@ const Index = () => {
         <div className="bg-blue-500/80 text-black font-bold px-4 py-2 rounded-lg mb-4 flex items-center gap-2">
           <Star className="h-4 w-4" />
           أفضل الرسمات
-          <div className="tooltip-container relative group">
-            <Info className="h-3 w-3 cursor-help" />
-            <div className="tooltip absolute right-0 bottom-full mb-2 w-48 p-2 bg-black/90 text-white text-xs rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 z-50">
-              هذه أفضل الرسمات التي تم إنشاؤها بواسطة مجتمع اكس دريم
-            </div>
-          </div>
         </div>
         <div className="h-full w-full overflow-hidden">
           <div className="h-full animate-vertical-scroll-reverse">
@@ -310,6 +349,94 @@ const Index = () => {
                 </Button>
               </CardContent>
             </Card>
+
+            {/* كارد لعبة شات يوتيوب */}
+            <Card className="bg-gradient-to-r from-red-900/80 to-pink-800/80 backdrop-blur-md border-red-400/30">
+              <CardHeader className="text-center pb-3">
+                <div className="flex justify-center mb-2">
+                  <div className="bg-red-500/20 p-3 rounded-full">
+                    <Youtube className="h-6 w-6 text-red-500" />
+                  </div>
+                </div>
+                <CardTitle className="text-white">لعبة شات يوتيوب</CardTitle>
+                <CardDescription className="text-red-200/80">
+                  أنشئ غرفة لمسابقة شات اليوتيوب
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {!showYoutubeForm ? (
+                  <Button 
+                    onClick={() => setShowYoutubeForm(true)}
+                    className="w-full bg-gradient-to-r from-red-600 to-pink-600 hover:from-red-700 hover:to-pink-700 text-white border-0 shadow-lg hover:shadow-red-500/30 transition-all duration-300"
+                  >
+                    <Youtube className="ml-2 h-5 w-5" />
+                    إنشاء لعبة يوتيوب
+                  </Button>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="youtube-url" className="text-white">رابط البث المباشر لليوتيوب</Label>
+                      <Input
+                        id="youtube-url"
+                        placeholder="https://www.youtube.com/watch?v=..."
+                        value={youtubeUrl}
+                        onChange={(e) => setYoutubeUrl(e.target.value)}
+                        className="bg-gray-800/50 border-gray-600 text-white"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label className="text-white">الإجابات الصحيحة (يمكن إضافة أكثر من إجابة)</Label>
+                      {correctAnswers.map((answer, index) => (
+                        <div key={index} className="flex gap-2">
+                          <Input
+                            value={answer}
+                            onChange={(e) => updateAnswer(index, e.target.value)}
+                            placeholder={`الإجابة الصحيحة ${index + 1}`}
+                            className="bg-gray-800/50 border-gray-600 text-white"
+                          />
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="icon"
+                            onClick={() => removeAnswerField(index)}
+                            disabled={correctAnswers.length === 1}
+                            className="bg-red-700/50 border-red-500 text-white hover:bg-red-600"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      ))}
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="w-full bg-gray-800/50 border-gray-600 text-white hover:bg-gray-700"
+                        onClick={addAnswerField}
+                      >
+                        <Plus className="ml-2 h-4 w-4" />
+                        إضافة إجابة
+                      </Button>
+                    </div>
+
+                    <div className="flex gap-2">
+                      <Button 
+                        onClick={() => createNewGame('youtube')}
+                        className="flex-1 bg-gradient-to-r from-red-600 to-pink-600 hover:from-red-700 hover:to-pink-700"
+                      >
+                        إنشاء اللعبة
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        onClick={() => setShowYoutubeForm(false)}
+                        className="bg-gray-800/50 border-gray-600 text-white hover:bg-gray-700"
+                      >
+                        إلغاء
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </div>
         </div>
 
@@ -370,22 +497,6 @@ const Index = () => {
           .animate-vertical-scroll:hover,
           .animate-vertical-scroll-reverse:hover {
             animation-play-state: paused;
-          }
-
-          .tooltip {
-            transform: translateX(-50%);
-            left: 50%;
-          }
-
-          .tooltip-container .tooltip {
-            visibility: hidden;
-            opacity: 0;
-            transition: opacity 0.3s, visibility 0.3s;
-          }
-
-          .tooltip-container:hover .tooltip {
-            visibility: visible;
-            opacity: 1;
           }
         `}
       </style>
