@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Plus, Gamepad2, Users, Crown, Sparkles, Zap, Star } from 'lucide-react';
+import { Plus, Gamepad2, Users, Crown, Sparkles, Zap, Star, Info } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { ThemeToggle } from '@/components/ThemeToggle';
@@ -11,7 +11,7 @@ import { YouTubeStats } from '@/components/YouTubeStats';
 // استيراد الصور
 const gamingBg = 'https://raw.githubusercontent.com/Raedxx1/rock-paper-link-play-96/refs/heads/main/src/assets/gaming-bg.jpg';
 
-// إنشاء مصفوفات للصور (سنستخدم روابط من Unsplash للتمثيل)
+// إنشاء مصفوفات للصور
 const memes = [
   { id: 1, image: 'https://raw.githubusercontent.com/Raedxx1/rock-paper-link-play-96/refs/heads/main/src/assets/Memes1.jpg', name: 'ميمز 1' },
   { id: 2, image: 'https://raw.githubusercontent.com/Raedxx1/rock-paper-link-play-96/refs/heads/main/src/assets/Memes2.jpg', name: 'ميمز 2' },
@@ -143,41 +143,65 @@ const Index = () => {
         ))}
       </div>
 
-      {/* معرض الميمز على اليمين */}
-      <div className="absolute right-4 top-0 h-full w-32 hidden lg:block overflow-hidden">
-        <div className="h-full animate-vertical-scroll">
-          {[...memes, ...memes].map((meme, index) => (
-            <div key={`${meme.id}-${index}`} className="mb-6 last:mb-0">
-              <div className="w-32 h-32 rounded-lg overflow-hidden border-2 border-yellow-400 shadow-lg bg-gray-800">
-                <img 
-                  src={meme.image} 
-                  alt={meme.name}
-                  className="w-full h-full object-cover"
-                />
-              </div>
+      {/* معرض الميمز على اليمين مع عنوان توضيحي */}
+      <div className="absolute right-4 top-0 h-full w-40 hidden lg:flex flex-col items-center py-4">
+        <div className="bg-yellow-500/80 text-black font-bold px-4 py-2 rounded-lg mb-4 flex items-center gap-2">
+          <Zap className="h-4 w-4" />
+          أفضل الميمزات
+          <div className="tooltip-container relative group">
+            <Info className="h-3 w-3 cursor-help" />
+            <div className="tooltip absolute left-0 bottom-full mb-2 w-48 p-2 bg-black/90 text-white text-xs rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 z-50">
+              هذه أفضل الميمزات التي تم إنشاؤها بواسطة مجتمع اكس دريم
             </div>
-          ))}
+          </div>
+        </div>
+        <div className="h-full w-full overflow-hidden">
+          <div className="h-full animate-vertical-scroll">
+            {[...memes, ...memes].map((meme, index) => (
+              <div key={`${meme.id}-${index}`} className="mb-6 last:mb-0 flex justify-center">
+                <div className="w-36 h-36 lg:w-40 lg:h-40 rounded-lg overflow-hidden border-2 border-yellow-400 shadow-lg bg-gray-800 hover:scale-105 transition-transform duration-300">
+                  <img 
+                    src={meme.image} 
+                    alt={meme.name}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
 
-      {/* معرض الرسمات على اليسار */}
-      <div className="absolute left-4 top-0 h-full w-32 hidden lg:block overflow-hidden">
-        <div className="h-full animate-vertical-scroll-reverse">
-          {[...drawings, ...drawings].map((drawing, index) => (
-            <div key={`${drawing.id}-${index}`} className="mb-6 last:mb-0">
-              <div className="w-32 h-32 rounded-lg overflow-hidden border-2 border-blue-400 shadow-lg bg-gray-800">
-                <img 
-                  src={drawing.image} 
-                  alt={drawing.name}
-                  className="w-full h-full object-cover"
-                />
-              </div>
+      {/* معرض الرسمات على اليسار مع عنوان توضيحي */}
+      <div className="absolute left-4 top-0 h-full w-40 hidden lg:flex flex-col items-center py-4">
+        <div className="bg-blue-500/80 text-black font-bold px-4 py-2 rounded-lg mb-4 flex items-center gap-2">
+          <Star className="h-4 w-4" />
+          أفضل الرسمات
+          <div className="tooltip-container relative group">
+            <Info className="h-3 w-3 cursor-help" />
+            <div className="tooltip absolute right-0 bottom-full mb-2 w-48 p-2 bg-black/90 text-white text-xs rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 z-50">
+              هذه أفضل الرسمات التي تم إنشاؤها بواسطة مجتمع اكس دريم
             </div>
-          ))}
+          </div>
+        </div>
+        <div className="h-full w-full overflow-hidden">
+          <div className="h-full animate-vertical-scroll-reverse">
+            {[...drawings, ...drawings].map((drawing, index) => (
+              <div key={`${drawing.id}-${index}`} className="mb-6 last:mb-0 flex justify-center">
+                <div className="w-36 h-36 lg:w-40 lg:h-40 rounded-lg overflow-hidden border-2 border-blue-400 shadow-lg bg-gray-800 hover:scale-105 transition-transform duration-300">
+                  <img 
+                    src={drawing.image} 
+                    alt={drawing.name}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
 
-      <div className="relative z-10 w-full max-w-2xl space-y-8">
+      <div className="relative z-10 w-full max-w-2xl xl:max-w-4xl space-y-8">
         {/* الهيدر */}
         <div className="text-center space-y-4 mb-6">
           <div className="flex items-center justify-center gap-3">
@@ -192,98 +216,101 @@ const Index = () => {
           <p className="text-xl text-white/90 drop-shadow-md">موقع العاب وفعاليات اكس دريم - العب مع أصدقائك أونلاين!</p>
         </div>
 
-        {/* معلومات المطور وإحصائيات اليوتيوب */}
-        <div className="flex flex-col gap-6">
-          <div className="flex justify-between items-center bg-blue-900/50 p-4 rounded-lg border border-blue-500/30">
-            <div>
-              <p className="flex items-center gap-2 font-semibold text-blue-300">
-                <Crown className="h-5 w-5" fill="currentColor" />
-                المطور: شاورما جيمر
-              </p>
-              <p className="mt-1 text-sm text-blue-200">مخصص لمجتمع اكس دريم</p>
+        {/* محتوى رئيسي مع تخطيط أفضل للشاشات الكبيرة */}
+        <div className="flex flex-col xl:flex-row xl:items-start xl:gap-8">
+          {/* معلومات المطور وإحصائيات اليوتيوب */}
+          <div className="flex-1 flex flex-col gap-6">
+            <div className="flex justify-between items-center bg-blue-900/50 p-4 rounded-lg border border-blue-500/30">
+              <div>
+                <p className="flex items-center gap-2 font-semibold text-blue-300">
+                  <Crown className="h-5 w-5" fill="currentColor" />
+                  المطور: شاورما جيمر
+                </p>
+                <p className="mt-1 text-sm text-blue-200">مخصص لمجتمع اكس دريم</p>
+              </div>
+              <ThemeToggle />
             </div>
-            <ThemeToggle />
+
+            {/* إحصائيات اليوتيوب - محسنة للحجم والوضوح */}
+            <div className="bg-gradient-to-r from-purple-900/50 to-pink-900/50 p-4 rounded-lg border border-purple-400/30">
+              <YouTubeStats />
+            </div>
           </div>
 
-          {/* إحصائيات اليوتيوب - محسنة للحجم والوضوح */}
-          <div className="bg-gradient-to-r from-purple-900/50 to-pink-900/50 p-4 rounded-lg border border-purple-400/30">
-            <YouTubeStats />
+          {/* ألعاب - مرتبة عموديا */}
+          <div className="flex-1 space-y-6 mt-6 xl:mt-0">
+            {/* كارد حجرة ورقة مقص */}
+            <Card className="bg-gradient-to-r from-blue-900/80 to-cyan-800/80 backdrop-blur-md border-blue-400/30">
+              <CardHeader className="text-center pb-3">
+                <div className="flex justify-center mb-2">
+                  <div className="bg-blue-500/20 p-3 rounded-full">
+                    <span className="text-2xl">🪨📄✂️</span>
+                  </div>
+                </div>
+                <CardTitle className="text-white">حجرة ورقة مقص</CardTitle>
+                <CardDescription className="text-blue-200/80">
+                  أنشئ غرفة جديدة وشارك الرابط
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Button 
+                  onClick={() => createNewGame('rps')} 
+                  className="w-full bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white border-0 shadow-lg hover:shadow-blue-500/30 transition-all duration-300"
+                >
+                  <Plus className="ml-2 h-5 w-5" />
+                  إنشاء لعبة
+                </Button>
+              </CardContent>
+            </Card>
+
+            {/* كارد لعبة إكس أو */}
+            <Card className="bg-gradient-to-r from-green-900/80 to-emerald-800/80 backdrop-blur-md border-green-400/30">
+              <CardHeader className="text-center pb-3">
+                <div className="flex justify-center mb-2">
+                  <div className="bg-green-500/20 p-3 rounded-full">
+                    <span className="text-2xl">❌⭕</span>
+                  </div>
+                </div>
+                <CardTitle className="text-white">لعبة إكس أو</CardTitle>
+                <CardDescription className="text-green-200/80">
+                  تحدى صديقك وجرب من يفوز
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Button 
+                  onClick={() => createNewGame('xo')}
+                  className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white border-0 shadow-lg hover:shadow-green-500/30 transition-all duration-300"
+                >
+                  <Gamepad2 className="ml-2 h-5 w-5" />
+                  إنشاء لعبة
+                </Button>
+              </CardContent>
+            </Card>
+
+            {/* كارد لعبة السلم والثعبان */}
+            <Card className="bg-gradient-to-r from-orange-900/80 to-red-800/80 backdrop-blur-md border-orange-400/30">
+              <CardHeader className="text-center pb-3">
+                <div className="flex justify-center mb-2">
+                  <div className="bg-orange-500/20 p-3 rounded-full">
+                    <span className="text-2xl">🐍🪜</span>
+                  </div>
+                </div>
+                <CardTitle className="text-white">السلم والثعبان</CardTitle>
+                <CardDescription className="text-orange-200/80">
+                  العب مع أصدقائك (حتى 4 لاعبين)
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Button 
+                  onClick={() => createNewGame('snakes')}
+                  className="w-full bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700 text-white border-0 shadow-lg hover:shadow-orange-500/30 transition-all duration-300"
+                >
+                  <Users className="ml-2 h-5 w-5" />
+                  إنشاء لعبة
+                </Button>
+              </CardContent>
+            </Card>
           </div>
-        </div>
-
-        {/* ألعاب - مرتبة عموديا */}
-        <div className="space-y-6">
-          {/* كارد حجرة ورقة مقص */}
-          <Card className="bg-gradient-to-r from-blue-900/80 to-cyan-800/80 backdrop-blur-md border-blue-400/30">
-            <CardHeader className="text-center pb-3">
-              <div className="flex justify-center mb-2">
-                <div className="bg-blue-500/20 p-3 rounded-full">
-                  <span className="text-2xl">🪨📄✂️</span>
-                </div>
-              </div>
-              <CardTitle className="text-white">حجرة ورقة مقص</CardTitle>
-              <CardDescription className="text-blue-200/80">
-                أنشئ غرفة جديدة وشارك الرابط
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Button 
-                onClick={() => createNewGame('rps')} 
-                className="w-full bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white border-0 shadow-lg hover:shadow-blue-500/30 transition-all duration-300"
-              >
-                <Plus className="ml-2 h-5 w-5" />
-                إنشاء لعبة
-              </Button>
-            </CardContent>
-          </Card>
-
-          {/* كارد لعبة إكس أو */}
-          <Card className="bg-gradient-to-r from-green-900/80 to-emerald-800/80 backdrop-blur-md border-green-400/30">
-            <CardHeader className="text-center pb-3">
-              <div className="flex justify-center mb-2">
-                <div className="bg-green-500/20 p-3 rounded-full">
-                  <span className="text-2xl">❌⭕</span>
-                </div>
-              </div>
-              <CardTitle className="text-white">لعبة إكس أو</CardTitle>
-              <CardDescription className="text-green-200/80">
-                تحدى صديقك وجرب من يفوز
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Button 
-                onClick={() => createNewGame('xo')}
-                className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white border-0 shadow-lg hover:shadow-green-500/30 transition-all duration-300"
-              >
-                <Gamepad2 className="ml-2 h-5 w-5" />
-                إنشاء لعبة
-              </Button>
-            </CardContent>
-          </Card>
-
-          {/* كارد لعبة السلم والثعبان */}
-          <Card className="bg-gradient-to-r from-orange-900/80 to-red-800/80 backdrop-blur-md border-orange-400/30">
-            <CardHeader className="text-center pb-3">
-              <div className="flex justify-center mb-2">
-                <div className="bg-orange-500/20 p-3 rounded-full">
-                  <span className="text-2xl">🐍🪜</span>
-                </div>
-              </div>
-              <CardTitle className="text-white">السلم والثعبان</CardTitle>
-              <CardDescription className="text-orange-200/80">
-                العب مع أصدقائك (حتى 4 لاعبين)
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Button 
-                onClick={() => createNewGame('snakes')}
-                className="w-full bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700 text-white border-0 shadow-lg hover:shadow-orange-500/30 transition-all duration-300"
-              >
-                <Users className="ml-2 h-5 w-5" />
-                إنشاء لعبة
-              </Button>
-            </CardContent>
-          </Card>
         </div>
 
         {/* الفوتر */}
@@ -343,6 +370,22 @@ const Index = () => {
           .animate-vertical-scroll:hover,
           .animate-vertical-scroll-reverse:hover {
             animation-play-state: paused;
+          }
+
+          .tooltip {
+            transform: translateX(-50%);
+            left: 50%;
+          }
+
+          .tooltip-container .tooltip {
+            visibility: hidden;
+            opacity: 0;
+            transition: opacity 0.3s, visibility 0.3s;
+          }
+
+          .tooltip-container:hover .tooltip {
+            visibility: visible;
+            opacity: 1;
           }
         `}
       </style>
