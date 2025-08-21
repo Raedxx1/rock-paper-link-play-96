@@ -10,10 +10,10 @@ import { supabase } from '@/integrations/supabase/client';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { YouTubeStats } from '@/components/YouTubeStats';
 
-// استيراد الصور
+// الخلفية
 const gamingBg = 'https://raw.githubusercontent.com/Raedxx1/rock-paper-link-play-96/refs/heads/main/src/assets/gaming-bg.jpg';
 
-// إنشاء مصفوفات للصور
+// الصور
 const memes = [
   { id: 1, image: 'https://raw.githubusercontent.com/Raedxx1/rock-paper-link-play-96/refs/heads/main/src/assets/Memes1.jpg', name: 'ميمز 1' },
   { id: 2, image: 'https://raw.githubusercontent.com/Raedxx1/rock-paper-link-play-96/refs/heads/main/src/assets/Memes2.jpg', name: 'ميمز 2' },
@@ -36,31 +36,53 @@ const drawings = [
   { id: 8, image: 'https://raw.githubusercontent.com/Raedxx1/rock-paper-link-play-96/refs/heads/main/src/assets/drawing8.jpg', name: 'رسمة 8' },
 ];
 
-// دالة مساعدة لاستخراج معرف الفيديو من رابط اليوتيوب (تدعم جميع الصيغ)
-function getYouTubeId(url: string) {
-  // الصيغ المختلفة لروابط اليوتيوب
-  const patterns = [
-    /youtu\.be\/([^#&?]{11})/,                                 // youtu.be/ID
-    /youtube\.com(?:\/embed)?\/([^#&?]{11})/,                  // youtube.com/embed/ID أو youtube.com/ID
-    /youtube\.com\/watch\?v=([^#&?]{11})/,                     // youtube.com/watch?v=ID
-    /youtube\.com\/live\/([^#&?]{11})/,                        // youtube.com/live/ID (البث المباشر)
-    /youtube\.com\/shorts\/([^#&?]{11})/,                      // youtube.com/shorts/ID
-    /youtube\.com\/embed\/([^#&?]{11})/,                       // youtube.com/embed/ID
-    /youtube\.com\/v\/([^#&?]{11})/,                           // youtube.com/v/ID
-  ];
+// 🔧 دالة قوية لاستخراج معرف الفيديو من كل صيغ يوتيوب (تدعم /live مع باراميترات مثل si=)
+function getYouTubeId(raw: string) {
+  if (!raw) return null;
+  const url = raw.trim();
 
-  for (const pattern of patterns) {
-    const match = url.match(pattern);
-    if (match && match[1]) {
-      return match[1];
-    }
+  // إذا المستخدم أدخل الـ ID مباشرة
+  if (/^[\w-]{11}$/.test(url)) return url;
+
+  // جرّب تحليل كـ URL إن أمكن
+  try {
+    const u = new URL(url);
+
+    // /watch?v=ID
+    const v = u.searchParams.get('v');
+    if (v && /^[\w-]{11}$/.test(v)) return v;
+
+    // /live/ID
+    const liveMatch = u.pathname.match(/\/live\/([\w-]{11})/);
+    if (liveMatch) return liveMatch[1];
+
+    // /shorts/ID
+    const shortsMatch = u.pathname.match(/\/shorts\/([\w-]{11})/);
+    if (shortsMatch) return shortsMatch[1];
+
+    // youtu.be/ID
+    const yb = u.hostname.includes('youtu.be') ? u.pathname.slice(1) : '';
+    if (/^[\w-]{11}$/.test(yb)) return yb;
+
+    // /embed/ID أو /v/ID
+    const pathMatch = u.pathname.match(/\/(?:embed|v)\/([\w-]{11})/);
+    if (pathMatch) return pathMatch[1];
+  } catch {
+    // لو ماكان URL صحيح نكمل بأنماط regex العامة
   }
 
-  // إذا لم تنجح أي من الصيغ أعلاه، نجرب استخراج المعلمة v من الرابط
-  const urlObj = new URL(url);
-  const vParam = urlObj.searchParams.get('v');
-  if (vParam && vParam.length === 11) {
-    return vParam;
+  // أنماط عامة كـ fallback (تشمل أي ترتيب)
+  const patterns = [
+    /youtu\.be\/([\w-]{11})/,
+    /youtube\.com\/watch\?[^#?]*v=([\w-]{11})/,
+    /youtube\.com\/live\/([\w-]{11})/,
+    /youtube\.com\/shorts\/([\w-]{11})/,
+    /youtube\.com\/embed\/([\w-]{11})/,
+    /youtube\.com\/v\/([\w-]{11})/,
+  ];
+  for (const p of patterns) {
+    const m = url.match(p);
+    if (m?.[1]) return m[1];
   }
 
   return null;
@@ -68,42 +90,28 @@ function getYouTubeId(url: string) {
 
 const Index = () => {
   const navigate = useNavigate();
-  const [roomLink, setRoomLink] = useState<string>('');
+  const [roomLink, setRoomLink] = useState<string>(''); // (محتفظ فيه لو احتجته لاحقًا)
   const [youtubeUrl, setYoutubeUrl] = useState('');
   const [correctAnswers, setCorrectAnswers] = useState<string[]>(['']);
   const [showYoutubeForm, setShowYoutubeForm] = useState(false);
 
   const generateRoomCode = (gameType: string) => {
     const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
-    let result = '';
-    
-    if (gameType === 'rps') {
-      result = 'rps-';
-    } else if (gameType === 'xo') {
-      result = 'xo-';
-    } else if (gameType === 'snakes') {
-      result = 'snk-';
-    } else if (gameType === 'youtube') {
-      result = 'yt-';
-    }
-    
-    for (let i = 0; i < 5; i++) {
-      result += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
+    let result = gameType === 'rps' ? 'rps-' :
+                 gameType === 'xo' ? 'xo-' :
+                 gameType === 'snakes' ? 'snk-' :
+                 gameType === 'youtube' ? 'yt-' : '';
+    for (let i = 0; i < 5; i++) result += chars.charAt(Math.floor(Math.random() * chars.length));
     return result;
   };
 
-  const addAnswerField = () => {
-    setCorrectAnswers([...correctAnswers, '']);
-  };
-
+  const addAnswerField = () => setCorrectAnswers([...correctAnswers, '']);
   const removeAnswerField = (index: number) => {
     if (correctAnswers.length <= 1) return;
     const newAnswers = [...correctAnswers];
     newAnswers.splice(index, 1);
     setCorrectAnswers(newAnswers);
   };
-
   const updateAnswer = (index: number, value: string) => {
     const newAnswers = [...correctAnswers];
     newAnswers[index] = value;
@@ -113,37 +121,29 @@ const Index = () => {
   const createNewGame = async (gameType: string) => {
     if (gameType === 'youtube') {
       if (!youtubeUrl) {
-        toast({
-          title: "❌ يرجى إدخال رابط اليوتيوب",
-          variant: "destructive"
-        });
+        toast({ title: "❌ يرجى إدخال رابط اليوتيوب", variant: "destructive" });
         return;
       }
 
-      // استخراج معرف الفيديو من الرابط
       const videoId = getYouTubeId(youtubeUrl);
       if (!videoId) {
         toast({
           title: "❌ رابط اليوتيوب غير صحيح",
-          description: "تأكد من صحة الرابط",
+          description: "تأكد من الرابط. يدعم watch و live و youtu.be",
           variant: "destructive"
         });
         return;
       }
 
-      // تحقق من وجود إجابات صحيحة
-      const validAnswers = correctAnswers.filter(answer => answer.trim() !== '');
+      const validAnswers = correctAnswers.filter(a => a.trim() !== '');
       if (validAnswers.length === 0) {
-        toast({
-          title: "❌ يرجى إدخال إجابة صحيحة واحدة على الأقل",
-          variant: "destructive"
-        });
+        toast({ title: "❌ يرجى إدخال إجابة صحيحة واحدة على الأقل", variant: "destructive" });
         return;
       }
     }
 
     const roomCode = generateRoomCode(gameType);
-    
+
     try {
       let tableName = '';
       let gameData: any = {
@@ -167,45 +167,119 @@ const Index = () => {
         tableName = 'youtube_chat_rooms';
         const videoId = getYouTubeId(youtubeUrl);
         gameData.youtube_url = youtubeUrl;
-        gameData.youtube_video_id = videoId;
-        gameData.correct_answers = correctAnswers.filter(answer => answer.trim() !== '');
+        gameData.youtube_video_id = videoId; // نحفظ ID المستخرج
+        gameData.correct_answers = correctAnswers.filter(a => a.trim() !== '');
         gameData.winners = [];
       }
 
-      const { error } = await supabase
-        .from(tableName)
-        .insert(gameData);
-
+      const { error } = await supabase.from(tableName).insert(gameData);
       if (error) {
-        toast({
-          title: "❌ خطأ في إنشاء الغرفة",
-          description: "حاول مرة أخرى",
-          variant: "destructive"
-        });
+        toast({ title: "❌ خطأ في إنشاء الغرفة", description: "حاول مرة أخرى", variant: "destructive" });
         return;
       }
 
-      if (gameType === 'rps') {
-        navigate(`/play?r=${roomCode}&host=true`);
-      } else if (gameType === 'xo') {
-        navigate(`/tic-tac-toe?r=${roomCode}&host=true`);
-      } else if (gameType === 'snakes') {
-        navigate(`/snakes-ladders?r=${roomCode}&host=true`);
-      } else if (gameType === 'youtube') {
-        navigate(`/youtube-chat?r=${roomCode}&host=true`);
-      }
-    } catch (error) {
-      toast({
-        title: "❌ خطأ في الاتصال",
-        description: "تأكد من اتصالك بالإنترنت",
-        variant: "destructive"
-      });
+      if (gameType === 'rps') navigate(`/play?r=${roomCode}&host=true`);
+      else if (gameType === 'xo') navigate(`/tic-tac-toe?r=${roomCode}&host=true`);
+      else if (gameType === 'snakes') navigate(`/snakes-ladders?r=${roomCode}&host=true`);
+      else if (gameType === 'youtube') navigate(`/youtube-chat?r=${roomCode}&host=true`);
+    } catch {
+      toast({ title: "❌ خطأ في الاتصال", description: "تأكد من اتصالك بالإنترنت", variant: "destructive" });
     }
   };
 
+  // 🧩 بطاقة لعبة يوتيوب (نستخدمها مرتين: مكانها تحت معلومات اليوتيوب على الشاشات الواسعة، وفي عمود الألعاب على الشاشات الصغيرة)
+  const YouTubeGameCard = () => (
+    <Card className="bg-gradient-to-r from-red-900/80 to-pink-800/80 backdrop-blur-md border-red-400/30">
+      <CardHeader className="text-center pb-3">
+        <div className="flex justify-center mb-2">
+          <div className="bg-red-500/20 p-3 rounded-full">
+            <Youtube className="h-6 w-6 text-red-500" />
+          </div>
+        </div>
+        <CardTitle className="text-white">لعبة شات يوتيوب</CardTitle>
+        <CardDescription className="text-red-200/80">
+          أنشئ غرفة لمسابقة شات اليوتيوب (البث المباشر)
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {!showYoutubeForm ? (
+          <Button
+            onClick={() => setShowYoutubeForm(true)}
+            className="w-full bg-gradient-to-r from-red-600 to-pink-600 hover:from-red-700 hover:to-pink-700 text-white border-0 shadow-lg hover:shadow-red-500/30 transition-all duration-300"
+          >
+            <Youtube className="ml-2 h-5 w-5" />
+            إنشاء لعبة يوتيوب
+          </Button>
+        ) : (
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="youtube-url" className="text-white">رابط البث المباشر لليوتيوب</Label>
+              <Input
+                id="youtube-url"
+                placeholder="https://www.youtube.com/live/XXXXXXXXXXX أو https://www.youtube.com/watch?v=XXXXXXXXXXX"
+                value={youtubeUrl}
+                onChange={(e) => setYoutubeUrl(e.target.value)}
+                className="bg-gray-800/50 border-gray-600 text-white"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-white">الإجابات الصحيحة (يمكن إضافة أكثر من إجابة)</Label>
+              {correctAnswers.map((answer, index) => (
+                <div key={index} className="flex gap-2">
+                  <Input
+                    value={answer}
+                    onChange={(e) => updateAnswer(index, e.target.value)}
+                    placeholder={`الإجابة الصحيحة ${index + 1}`}
+                    className="bg-gray-800/50 border-gray-600 text-white"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    onClick={() => removeAnswerField(index)}
+                    disabled={correctAnswers.length === 1}
+                    className="bg-red-700/50 border-red-500 text-white hover:bg-red-600"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              ))}
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full bg-gray-800/50 border-gray-600 text-white hover:bg-gray-700"
+                onClick={addAnswerField}
+              >
+                <Plus className="ml-2 h-4 w-4" />
+                إضافة إجابة
+              </Button>
+            </div>
+
+            <div className="flex gap-2">
+              <Button
+                onClick={() => createNewGame('youtube')}
+                className="flex-1 bg-gradient-to-r from-red-600 to-pink-600 hover:from-red-700 hover:to-pink-700"
+              >
+                إنشاء اللعبة
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => setShowYoutubeForm(false)}
+                className="bg-gray-800/50 border-gray-600 text-white hover:bg-gray-700"
+              >
+                إلغاء
+              </Button>
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+
   return (
-    <div 
-      className="min-h-screen relative flex items-center justify-center p-4 overflow-hidden" 
+    <div
+      className="min-h-screen relative flex items-center justify-center p-4 overflow-hidden"
       dir="rtl"
       style={{
         backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.9)), url(${gamingBg})`,
@@ -215,11 +289,11 @@ const Index = () => {
         backgroundAttachment: 'fixed'
       }}
     >
-      {/* تأثيرات الجمالية */}
+      {/* تأثيرات */}
       <div className="absolute top-0 left-0 w-full h-1/3 bg-gradient-to-b from-purple-900/30 to-transparent"></div>
       <div className="absolute bottom-0 left-0 w-full h-1/3 bg-gradient-to-t from-blue-900/30 to-transparent"></div>
-      
-      {/* جسيمات متحركة */}
+
+      {/* جسيمات */}
       <div className="absolute inset-0 overflow-hidden">
         {[...Array(15)].map((_, i) => (
           <div
@@ -237,8 +311,8 @@ const Index = () => {
         ))}
       </div>
 
-      {/* معرض الميمز على اليمين مع عنوان توضيحي */}
-      <div className="absolute right-4 top-0 h-full w-40 hidden lg:flex flex-col items-center py-4">
+      {/* يمين - ميمز (أكبر + عمود أوسع) */}
+      <div className="absolute right-4 top-0 h-full w-48 2xl:w-56 hidden lg:flex flex-col items-center py-4">
         <div className="bg-yellow-500/80 text-black font-bold px-4 py-2 rounded-lg mb-4 flex items-center gap-2">
           <Zap className="h-4 w-4" />
           أفضل الميمزات
@@ -247,12 +321,8 @@ const Index = () => {
           <div className="h-full animate-vertical-scroll">
             {[...memes, ...memes].map((meme, index) => (
               <div key={`${meme.id}-${index}`} className="mb-6 last:mb-0 flex justify-center">
-                <div className="w-36 h-36 lg:w-40 lg:h-40 rounded-lg overflow-hidden border-2 border-yellow-400 shadow-lg bg-gray-800 hover:scale-105 transition-transform duration-300">
-                  <img 
-                    src={meme.image} 
-                    alt={meme.name}
-                    className="w-full h-full object-cover"
-                  />
+                <div className="w-44 h-44 2xl:w-52 2xl:h-52 rounded-lg overflow-hidden border-2 border-yellow-400 shadow-lg bg-gray-800 hover:scale-105 transition-transform duration-300">
+                  <img src={meme.image} alt={meme.name} className="w-full h-full object-cover" />
                 </div>
               </div>
             ))}
@@ -260,8 +330,8 @@ const Index = () => {
         </div>
       </div>
 
-      {/* معرض الرسمات على اليسار مع عنوان توضيحي */}
-      <div className="absolute left-4 top-0 h-full w-40 hidden lg:flex flex-col items-center py-4">
+      {/* يسار - رسمات (أكبر + عمود أوسع) */}
+      <div className="absolute left-4 top-0 h-full w-48 2xl:w-56 hidden lg:flex flex-col items-center py-4">
         <div className="bg-blue-500/80 text-black font-bold px-4 py-2 rounded-lg mb-4 flex items-center gap-2">
           <Star className="h-4 w-4" />
           أفضل الرسمات
@@ -270,12 +340,8 @@ const Index = () => {
           <div className="h-full animate-vertical-scroll-reverse">
             {[...drawings, ...drawings].map((drawing, index) => (
               <div key={`${drawing.id}-${index}`} className="mb-6 last:mb-0 flex justify-center">
-                <div className="w-36 h-36 lg:w-40 lg:h-40 rounded-lg overflow-hidden border-2 border-blue-400 shadow-lg bg-gray-800 hover:scale-105 transition-transform duration-300">
-                  <img 
-                    src={drawing.image} 
-                    alt={drawing.name}
-                    className="w-full h-full object-cover"
-                  />
+                <div className="w-44 h-44 2xl:w-52 2xl:h-52 rounded-lg overflow-hidden border-2 border-blue-400 shadow-lg bg-gray-800 hover:scale-105 transition-transform duration-300">
+                  <img src={drawing.image} alt={drawing.name} className="w-full h-full object-cover" />
                 </div>
               </div>
             ))}
@@ -283,6 +349,7 @@ const Index = () => {
         </div>
       </div>
 
+      {/* المحتوى */}
       <div className="relative z-10 w-full max-w-2xl xl:max-w-4xl space-y-8">
         {/* الهيدر */}
         <div className="text-center space-y-4 mb-6">
@@ -298,9 +365,9 @@ const Index = () => {
           <p className="text-xl text-white/90 drop-shadow-md">موقع العاب وفعاليات اكس دريم - العب مع أصدقائك أونلاين!</p>
         </div>
 
-        {/* محتوى رئيسي مع تخطيط أفضل للشاشات الكبيرة */}
+        {/* تخطيط: عمودين على الشاشات الواسعة */}
         <div className="flex flex-col xl:flex-row xl:items-start xl:gap-8">
-          {/* معلومات المطور وإحصائيات اليوتيوب */}
+          {/* يسار: معلومات + إحصائيات + (على الواسع) زر لعبة اليوتيوب تحتها */}
           <div className="flex-1 flex flex-col gap-6">
             <div className="flex justify-between items-center bg-blue-900/50 p-4 rounded-lg border border-blue-500/30">
               <div>
@@ -313,15 +380,19 @@ const Index = () => {
               <ThemeToggle />
             </div>
 
-            {/* إحصائيات اليوتيوب - محسنة للحجم والوضوح */}
             <div className="bg-gradient-to-r from-purple-900/50 to-pink-900/50 p-4 rounded-lg border border-purple-400/30">
               <YouTubeStats />
             </div>
+
+            {/* ⬇️ يظهر فقط على الشاشات الواسعة: زر لعبة اليوتيوب تحت مستطيل المعلومات */}
+            <div className="hidden xl:block">
+              <YouTubeGameCard />
+            </div>
           </div>
 
-          {/* ألعاب - مرتبة عموديا */}
+          {/* يمين: الألعاب كلها — وعلى الشاشات الصغيرة نظهر كرت اليوتيوب هنا */}
           <div className="flex-1 space-y-6 mt-6 xl:mt-0">
-            {/* كارد حجرة ورقة مقص */}
+            {/* حجرة ورقة مقص */}
             <Card className="bg-gradient-to-r from-blue-900/80 to-cyan-800/80 backdrop-blur-md border-blue-400/30">
               <CardHeader className="text-center pb-3">
                 <div className="flex justify-center mb-2">
@@ -330,13 +401,11 @@ const Index = () => {
                   </div>
                 </div>
                 <CardTitle className="text-white">حجرة ورقة مقص</CardTitle>
-                <CardDescription className="text-blue-200/80">
-                  أنشئ غرفة جديدة وشارك الرابط
-                </CardDescription>
+                <CardDescription className="text-blue-200/80">أنشئ غرفة جديدة وشارك الرابط</CardDescription>
               </CardHeader>
               <CardContent>
-                <Button 
-                  onClick={() => createNewGame('rps')} 
+                <Button
+                  onClick={() => createNewGame('rps')}
                   className="w-full bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white border-0 shadow-lg hover:shadow-blue-500/30 transition-all duration-300"
                 >
                   <Plus className="ml-2 h-5 w-5" />
@@ -345,7 +414,7 @@ const Index = () => {
               </CardContent>
             </Card>
 
-            {/* كارد لعبة إكس أو */}
+            {/* إكس أو */}
             <Card className="bg-gradient-to-r from-green-900/80 to-emerald-800/80 backdrop-blur-md border-green-400/30">
               <CardHeader className="text-center pb-3">
                 <div className="flex justify-center mb-2">
@@ -354,12 +423,10 @@ const Index = () => {
                   </div>
                 </div>
                 <CardTitle className="text-white">لعبة إكس أو</CardTitle>
-                <CardDescription className="text-green-200/80">
-                  تحدى صديقك وجرب من يفوز
-                </CardDescription>
+                <CardDescription className="text-green-200/80">تحدى صديقك وجرب من يفوز</CardDescription>
               </CardHeader>
               <CardContent>
-                <Button 
+                <Button
                   onClick={() => createNewGame('xo')}
                   className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white border-0 shadow-lg hover:shadow-green-500/30 transition-all duration-300"
                 >
@@ -369,21 +436,19 @@ const Index = () => {
               </CardContent>
             </Card>
 
-            {/* كارد لعبة السلم والثعبان */}
+            {/* السلم والثعبان */}
             <Card className="bg-gradient-to-r from-orange-900/80 to-red-800/80 backdrop-blur-md border-orange-400/30">
               <CardHeader className="text-center pb-3">
                 <div className="flex justify-center mb-2">
                   <div className="bg-orange-500/20 p-3 rounded-full">
-                    <span className="text-2xl">🐍🪜</span>
+                    <span className="text-٢xl">🐍🪜</span>
                   </div>
                 </div>
                 <CardTitle className="text-white">السلم والثعبان</CardTitle>
-                <CardDescription className="text-orange-200/80">
-                  العب مع أصدقائك (حتى 4 لاعبين)
-                </CardDescription>
+                <CardDescription className="text-orange-200/80">العب مع أصدقائك (حتى 4 لاعبين)</CardDescription>
               </CardHeader>
               <CardContent>
-                <Button 
+                <Button
                   onClick={() => createNewGame('snakes')}
                   className="w-full bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700 text-white border-0 shadow-lg hover:shadow-orange-500/30 transition-all duration-300"
                 >
@@ -393,93 +458,10 @@ const Index = () => {
               </CardContent>
             </Card>
 
-            {/* كارد لعبة شات يوتيوب */}
-            <Card className="bg-gradient-to-r from-red-900/80 to-pink-800/80 backdrop-blur-md border-red-400/30">
-              <CardHeader className="text-center pb-3">
-                <div className="flex justify-center mb-2">
-                  <div className="bg-red-500/20 p-3 rounded-full">
-                    <Youtube className="h-6 w-6 text-red-500" />
-                  </div>
-                </div>
-                <CardTitle className="text-white">لعبة شات يوتيوب</CardTitle>
-                <CardDescription className="text-red-200/80">
-                  أنشئ غرفة لمسابقة شات اليوتيوب
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {!showYoutubeForm ? (
-                  <Button 
-                    onClick={() => setShowYoutubeForm(true)}
-                    className="w-full bg-gradient-to-r from-red-600 to-pink-600 hover:from-red-700 hover:to-pink-700 text-white border-0 shadow-lg hover:shadow-red-500/30 transition-all duration-300"
-                  >
-                    <Youtube className="ml-2 h-5 w-5" />
-                    إنشاء لعبة يوتيوب
-                  </Button>
-                ) : (
-                  <div className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="youtube-url" className="text-white">رابط البث المباشر لليوتيوب</Label>
-                      <Input
-                        id="youtube-url"
-                        placeholder="https://www.youtube.com/watch?v=..."
-                        value={youtubeUrl}
-                        onChange={(e) => setYoutubeUrl(e.target.value)}
-                        className="bg-gray-800/50 border-gray-600 text-white"
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label className="text-white">الإجابات الصحيحة (يمكن إضافة أكثر من إجابة)</Label>
-                      {correctAnswers.map((answer, index) => (
-                        <div key={index} className="flex gap-2">
-                          <Input
-                            value={answer}
-                            onChange={(e) => updateAnswer(index, e.target.value)}
-                            placeholder={`الإجابة الصحيحة ${index + 1}`}
-                            className="bg-gray-800/50 border-gray-600 text-white"
-                          />
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="icon"
-                            onClick={() => removeAnswerField(index)}
-                            disabled={correctAnswers.length === 1}
-                            className="bg-red-700/50 border-red-500 text-white hover:bg-red-600"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      ))}
-                      <Button
-                        type="button"
-                        variant="outline"
-                        className="w-full bg-gray-800/50 border-gray-600 text-white hover:bg-gray-700"
-                        onClick={addAnswerField}
-                      >
-                        <Plus className="ml-2 h-4 w-4" />
-                        إضافة إجابة
-                      </Button>
-                    </div>
-
-                    <div className="flex gap-2">
-                      <Button 
-                        onClick={() => createNewGame('youtube')}
-                        className="flex-1 bg-gradient-to-r from-red-600 to-pink-600 hover:from-red-700 hover:to-pink-700"
-                      >
-                        إنشاء اللعبة
-                      </Button>
-                      <Button 
-                        variant="outline" 
-                        onClick={() => setShowYoutubeForm(false)}
-                        className="bg-gray-800/50 border-gray-600 text-white hover:bg-gray-700"
-                      >
-                        إلغاء
-                      </Button>
-                    </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+            {/* يظهر كرت اليوتيوب هنا فقط على الشاشات الصغيرة/الطول */}
+            <div className="xl:hidden">
+              <YouTubeGameCard />
+            </div>
           </div>
         </div>
 
@@ -493,54 +475,26 @@ const Index = () => {
         </div>
       </div>
 
-      {/* إضافة أنميشن للجسيمات والصور */}
+      {/* أنيميشن */}
       <style>
         {`
           @keyframes float {
-            0% {
-              transform: translateY(0) rotate(0deg);
-              opacity: 1;
-            }
-            100% {
-              transform: translateY(-100vh) rotate(360deg);
-              opacity: 0;
-            }
+            0% { transform: translateY(0) rotate(0deg); opacity: 1; }
+            100% { transform: translateY(-100vh) rotate(360deg); opacity: 0; }
           }
-          
           @keyframes vertical-scroll {
-            0% {
-              transform: translateY(0);
-            }
-            100% {
-              transform: translateY(-50%);
-            }
+            0% { transform: translateY(0); }
+            100% { transform: translateY(-50%); }
           }
-          
           @keyframes vertical-scroll-reverse {
-            0% {
-              transform: translateY(-50%);
-            }
-            100% {
-              transform: translateY(0);
-            }
+            0% { transform: translateY(-50%); }
+            100% { transform: translateY(0); }
           }
-          
-          .animate-float {
-            animation: float linear infinite;
-          }
-          
-          .animate-vertical-scroll {
-            animation: vertical-scroll 30s linear infinite;
-          }
-          
-          .animate-vertical-scroll-reverse {
-            animation: vertical-scroll-reverse 30s linear infinite;
-          }
-          
+          .animate-float { animation: float linear infinite; }
+          .animate-vertical-scroll { animation: vertical-scroll 28s linear infinite; }
+          .animate-vertical-scroll-reverse { animation: vertical-scroll-reverse 28s linear infinite; }
           .animate-vertical-scroll:hover,
-          .animate-vertical-scroll-reverse:hover {
-            animation-play-state: paused;
-          }
+          .animate-vertical-scroll-reverse:hover { animation-play-state: paused; }
         `}
       </style>
     </div>
