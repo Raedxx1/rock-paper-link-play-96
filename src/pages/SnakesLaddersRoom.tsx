@@ -915,7 +915,7 @@ const SnakesLaddersRoom = () => {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="relative mb-4 mx-auto" style={{ maxWidth: '400px' }}>
+              <div className="relative mb-4 mx-auto" style={{ maxWidth: '500px' }}>
                 {/* خلفية اللوحة */}
                 <img 
                   src="/snakes-ladders-board.jpg" 
@@ -924,7 +924,7 @@ const SnakesLaddersRoom = () => {
                 />
                 
                 {/* شبكة الخلايا الشفافة فوق الخلفية */}
-                <div className="absolute inset-0 grid grid-cols-0 grid-rows-0 gap-0">
+                <div className="absolute inset-0 grid grid-cols-10 grid-rows-10 gap-0">
                   {boardLayout.map((row, rowIndex) => (
                     row.map((cellNumber, colIndex) => {
                       const playersHere = players.filter(player => 
@@ -934,51 +934,42 @@ const SnakesLaddersRoom = () => {
                       const isLadder = hasLadder(cellNumber);
                       const isSnake = hasSnake(cellNumber);
                       
-                      // حساب الإحداثيات بناءً على الصف والعمود
-                      const adjustedRowIndex = 9 - rowIndex; 
-                      const top = `${adjustedRowIndex * 10}%`;
-                      const left = `${colIndex * 10}%`;
-                      const width = '10%';
-                      const height = '10%';
-                      
                       return (
                         <div
                           key={cellNumber}
-                          className="absolute border border-gray-400 border-opacity-30"
-                          style={{ top, left, width, height }}
+                          className="relative"
+                          style={{ 
+                            gridRow: rowIndex + 1,
+                            gridColumn: colIndex + 1
+                          }}
                         >
                           {/* عرض اللاعبين على الخلية */}
                           {playersHere.length > 0 && (
-                            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 flex">
-                              {playersHere.slice(0, 2).map((player, idx) => (
-                                <div
-                                  key={idx}
-                                  className={`w-3 h-3 rounded-full ${player.color} border border-white`}
-                                  title={player.name}
-                                />
-                              ))}
-                              {playersHere.length > 2 && (
-                                <div className="w-3 h-3 rounded-full bg-gray-500 text-white text-[8px] flex items-center justify-center border border-white">
-                                  +{playersHere.length - 2}
-                                </div>
-                              )}
+                            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 flex flex-wrap justify-center gap-1">
+                              {playersHere.map((player, idx) => {
+                                const playerIdx = players.findIndex(p => p.name === player.name);
+                                return (
+                                  <div
+                                    key={idx}
+                                    className={`w-8 h-8 rounded-full ${player.color} border-2 border-white flex items-center justify-center text-white font-bold text-xs`}
+                                    title={player.name}
+                                  >
+                                    {playerIdx + 1}
+                                  </div>
+                                );
+                              })}
                             </div>
                           )}
                           
                           {/* عرض أيقونات السلالم والثعابين */}
                           {(isLadder || isSnake) && (
-                            <div className={`absolute bottom-0 right-0 text-sm ${isLadder ? 'text-green-600' : 'text-red-600'}`} 
+                            <div className={`absolute bottom-0 right-0 text-xl ${isLadder ? 'text-green-600' : 'text-red-600'}`} 
                               title={isLadder ? 
                                 `سلم إلى ${snakesAndLadders.ladders[cellNumber as keyof typeof snakesAndLadders.ladders]}` : 
                                 `ثعبان إلى ${snakesAndLadders.snakes[cellNumber as keyof typeof snakesAndLadders.snakes]}`}>
                               {isLadder ? '🪜' : '🐍'}
                             </div>
                           )}
-                          
-                          {/* عرض رقم الخلية */}
-                          <span className="absolute top-0 left-0 text-[10px] font-bold bg-white bg-opacity-70 rounded-full w-4 h-4 flex items-center justify-center">
-                            {cellNumber}
-                          </span>
                         </div>
                       );
                     })
