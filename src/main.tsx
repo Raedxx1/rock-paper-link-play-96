@@ -13,6 +13,7 @@ import TicTacToeRoom from './pages/TicTacToeRoom'; // صفحة XO
 import Home from './pages/Home'; // صفحة إنشاء غرفة XO
 import SnakesLaddersRoom from './pages/SnakesLaddersRoom'; // صفحة السلم والثعبان
 import SnakesLaddersHome from './pages/SnakesLaddersHome'; // صفحة إنشاء غرفة السلم والثعبان
+import YoutubeChatGame from './pages/YoutubeChatGame';
 
 const queryClient = new QueryClient();
 
@@ -37,6 +38,10 @@ const router = createBrowserRouter([
   {
     path: '/snakes-ladders', // مسار غرفة السلم والثعبان
     element: <SnakesLaddersRoom />,
+  },
+  {
+    path: '/youtube-chat',
+    element: <YoutubeChatGame />,
   },
   {
     path: '/snakes-home', // مسار منفصل لصفحة إنشاء غرفة السلم والثعبان
