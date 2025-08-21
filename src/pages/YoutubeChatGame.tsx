@@ -27,7 +27,8 @@ const YoutubeChatGame = () => {
   const [loading, setLoading] = useState(true);
   const [checking, setChecking] = useState(false);
 
-  const YOUTUBE_API_KEY = 'AIzaSyBt3o2l9-0b-HnsaZlwK1wTszwTxQbfUCU';
+  // استخدام مفتاح YouTube API الجديد
+  const YOUTUBE_API_KEY = 'AIzaSyBIuk3jEwfWwGpV6G3mY8jx2Otwbptj00A';
 
   useEffect(() => {
     if (!roomCode) {
@@ -83,25 +84,29 @@ const YoutubeChatGame = () => {
     setLoading(false);
   };
 
+  // دالة للتأخير
+  const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
   const checkYouTubeComments = async () => {
     if (!roomData || roomData.winners.length >= 3) return;
     
     setChecking(true);
     
     try {
-      // جلب التعليقات من فيديو اليوتيوب
       const response = await fetch(
         `https://www.googleapis.com/youtube/v3/commentThreads?part=snippet&videoId=${roomData.youtube_video_id}&key=${YOUTUBE_API_KEY}&maxResults=100`
       );
       
       if (!response.ok) {
-        throw new Error('Failed to fetch comments');
+        const errorData = await response.json();
+        throw new Error(errorData.error?.message || `خطأ في API: ${response.status}`);
       }
       
       const data = await response.json();
       
       if (data.items && data.items.length > 0) {
         const newWinners = [...roomData.winners];
+        let winnersAdded = 0;
         
         // التحقق من كل تعليق
         for (const item of data.items) {
@@ -109,14 +114,23 @@ const YoutubeChatGame = () => {
           const author = comment.authorDisplayName;
           const text = comment.textDisplay;
           
+          // تخطي التعليقات القديمة إذا كانت آخر مرة تحقق فيها محددة
+          if (roomData.last_checked) {
+            const commentDate = new Date(comment.publishedAt);
+            const lastCheckedDate = new Date(roomData.last_checked);
+            if (commentDate <= lastCheckedDate) continue;
+          }
+          
           // التحقق إذا كانت الإجابة صحيحة
           const isCorrect = roomData.correct_answers.some(answer => 
-            text.toLowerCase().includes(answer.toLowerCase())
+            answer.trim() !== '' && text.toLowerCase().includes(answer.toLowerCase())
           );
           
           // إذا كانت الإجابة صحيحة ولم يكن اللاعب فائزاً بعد
           if (isCorrect && !newWinners.includes(author) && newWinners.length < 3) {
             newWinners.push(author);
+            winnersAdded++;
+            
             toast({
               title: "🎉 فائز جديد!",
               description: `${author} أجاب إجابة صحيحة!`
@@ -128,7 +142,7 @@ const YoutubeChatGame = () => {
         }
         
         // تحديث قاعدة البيانات بالفائزين الجدد
-        if (newWinners.length > roomData.winners.length) {
+        if (winnersAdded > 0) {
           const { error } = await supabase
             .from('youtube_chat_rooms')
             .update({ 
@@ -139,18 +153,56 @@ const YoutubeChatGame = () => {
             
           if (error) {
             console.error('Error updating winners:', error);
+            toast({
+              title: "❌ خطأ في حفظ الفائزين",
+              description: "حاول مرة أخرى",
+              variant: "destructive"
+            });
           }
+        } else {
+          toast({
+            title: "⚠️ لا يوجد فائزون جدد",
+            description: "لم يتم العثور على إجابات صحيحة جديدة",
+          });
         }
+      } else {
+        toast({
+          title: "⚠️ لا توجد تعليقات",
+          description: "لم يتم العثور على أي تعليقات في هذا الفيديو",
+        });
       }
     } catch (error) {
       console.error('Error checking YouTube comments:', error);
-      toast({
-        title: "❌ خطأ في جلب التعليقات",
-        description: "تأكد من صحة رابط الفيديو",
-        variant: "destructive"
-      });
+      
+      if (error.message.includes('quota')) {
+        toast({
+          title: "❌ تجاوز الحد المسموح",
+          description: "تم تجاوز عدد الطلبات المسموحة لليوم، حاول غداً",
+          variant: "destructive"
+        });
+      } else if (error.message.includes('API key')) {
+        toast({
+          title: "❌ مفتاح API غير صالح",
+          description: "يجب تحديث مفتاح YouTube API",
+          variant: "destructive"
+        });
+      } else if (error.message.includes('disabled')) {
+        toast({
+          title: "❌ API غير مفعل",
+          description: "يجب تفعيل YouTube Data API",
+          variant: "destructive"
+        });
+      } else {
+        toast({
+          title: "❌ خطأ في جلب التعليقات",
+          description: error.message || "تأكد من صحة رابط الفيديو",
+          variant: "destructive"
+        });
+      }
     } finally {
       setChecking(false);
+      // إضافة تأخير لتجنب تجاوز حصص API
+      await delay(1000);
     }
   };
 
@@ -230,11 +282,19 @@ const YoutubeChatGame = () => {
               <iframe
                 width="100%"
                 height="100%"
-                src={`https://www.youtube.com/embed/${roomData.youtube_video_id}`}
+                src={`https://www.youtube.com/embed/${roomData.youtube_video_id}?autoplay=1&rel=0`}
                 title="YouTube video player"
                 frameBorder="0"
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                 allowFullScreen
+                onError={(e) => {
+                  console.error("Error loading YouTube video:", e);
+                  toast({
+                    title: "❌ خطأ في تحميل الفيديو",
+                    description: "قد يكون الفيديو غير متاح في منطقتك",
+                    variant: "destructive"
+                  });
+                }}
               ></iframe>
             </div>
             
