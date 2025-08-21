@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Copy, Plus, Gamepad2, Users } from 'lucide-react';
+import { Copy, Plus, Gamepad2, Users, Crown, Sparkles, Zap, Star } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { ThemeToggle } from '@/components/ThemeToggle';
@@ -86,96 +86,177 @@ const Index = () => {
 
   return (
     <div 
-      className="min-h-screen relative flex items-center justify-center p-4" 
+      className="min-h-screen relative flex items-center justify-center p-4 overflow-hidden" 
       dir="rtl"
       style={{
-        backgroundImage: `url(${gamingBg})`,
+        backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.9)), url(${gamingBg})`,
         backgroundSize: 'cover',
         backgroundPosition: 'center',
-        backgroundRepeat: 'no-repeat'
+        backgroundRepeat: 'no-repeat',
+        backgroundAttachment: 'fixed'
       }}
     >
-      <div className="absolute inset-0 bg-black/40 dark:bg-black/60"></div>
+      {/* تأثيرات الجمالية */}
+      <div className="absolute top-0 left-0 w-full h-1/3 bg-gradient-to-b from-purple-900/30 to-transparent"></div>
+      <div className="absolute bottom-0 left-0 w-full h-1/3 bg-gradient-to-t from-blue-900/30 to-transparent"></div>
       
-      <div className="relative z-10 w-full max-w-md space-y-6">
-        <div className="flex justify-between items-center">
-          <div className="text-sm text-white/90">
-            <p>💻 مبرمج من قبل: <span className="font-semibold text-blue-300">شاورما جيمر</span></p>
-            <p>🎮 مخصص لـ: <span className="font-semibold text-purple-300">اكس دريم</span></p>
+      {/* جسيمات متحركة */}
+      <div className="absolute inset-0 overflow-hidden">
+        {[...Array(15)].map((_, i) => (
+          <div
+            key={i}
+            className="absolute animate-float"
+            style={{
+              top: `${Math.random() * 100}%`,
+              left: `${Math.random() * 100}%`,
+              animationDelay: `${Math.random() * 5}s`,
+              animationDuration: `${15 + Math.random() * 10}s`
+            }}
+          >
+            <Sparkles size={16} className="text-yellow-400/40" />
           </div>
-          <ThemeToggle />
+        ))}
+      </div>
+
+      <div className="relative z-10 w-full max-w-2xl space-y-8">
+        {/* الهيدر */}
+        <div className="text-center space-y-4 mb-6">
+          <div className="flex items-center justify-center gap-3">
+            <div className="relative">
+              <Zap className="h-10 w-10 text-yellow-400 animate-pulse" fill="currentColor" />
+              <Star className="absolute -top-1 -right-2 h-5 w-5 text-blue-400" fill="currentColor" />
+            </div>
+            <h1 className="text-5xl font-bold bg-gradient-to-r from-blue-400 via-purple-500 to-pink-500 bg-clip-text text-transparent drop-shadow-lg">
+              شاورما جيمر
+            </h1>
+          </div>
+          <p className="text-xl text-white/90 drop-shadow-md">منصة الألعاب العربية - العب مع أصدقائك أونلاين!</p>
         </div>
 
-        <YouTubeStats />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* معلومات المطور */}
+          <Card className="bg-gradient-to-br from-blue-900/70 to-purple-900/70 backdrop-blur-md border-blue-500/30 text-white">
+            <CardContent className="p-6">
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="flex items-center gap-2 font-semibold text-blue-300">
+                    <Crown className="h-5 w-5" fill="currentColor" />
+                    المطور: شاورما جيمر
+                  </p>
+                  <p className="mt-2 text-sm text-blue-200">مخصص لمجتمع اكس دريم</p>
+                </div>
+                <ThemeToggle />
+              </div>
+            </CardContent>
+          </Card>
 
-        {/* العنوان */}
-        <div className="text-center space-y-2">
-          <h1 className="text-3xl font-bold text-white drop-shadow-lg">🎮 اختر لعبتك</h1>
-          <p className="text-white/90 drop-shadow">العب مع أصدقائك أونلاين!</p>
+          {/* إحصائيات اليوتيوب - محفوظة كما هي */}
+          <YouTubeStats />
         </div>
 
-        {/* كارد حجرة ورقة مقص */}
-        <Card className="w-full bg-white/95 dark:bg-black/80 backdrop-blur-sm border-white/20">
-          <CardHeader className="text-center">
-            <CardTitle className="text-gray-900 dark:text-white">🪨📄✂️ حجرة ورقة مقص</CardTitle>
-            <CardDescription className="text-gray-600 dark:text-gray-300">
-              أنشئ غرفة جديدة وشارك الرابط مع صديقك
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button 
-              onClick={() => createNewGame('rps')} 
-              className="w-full text-lg py-6 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-0 shadow-lg hover:shadow-xl transition-all duration-300"
-            >
-              <Plus className="ml-2 h-5 w-5" />
-              🆕 إنشاء لعبة جديدة
-            </Button>
-          </CardContent>
-        </Card>
+        {/* ألعاب */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {/* كارد حجرة ورقة مقص */}
+          <Card className="group bg-gradient-to-br from-blue-900/80 to-cyan-800/80 backdrop-blur-md border-blue-400/30 hover:border-blue-400/60 transition-all duration-500 hover:scale-105">
+            <CardHeader className="text-center pb-3">
+              <div className="flex justify-center mb-2">
+                <div className="bg-blue-500/20 p-3 rounded-full">
+                  <span className="text-2xl">🪨📄✂️</span>
+                </div>
+              </div>
+              <CardTitle className="text-white group-hover:text-blue-300 transition-colors">حجرة ورقة مقص</CardTitle>
+              <CardDescription className="text-blue-200/80">
+                أنشئ غرفة جديدة وشارك الرابط
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button 
+                onClick={() => createNewGame('rps')} 
+                className="w-full bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white border-0 shadow-lg hover:shadow-blue-500/30 transition-all duration-300 group-hover:shadow-blue-500/50"
+              >
+                <Plus className="ml-2 h-5 w-5" />
+                إنشاء لعبة
+              </Button>
+            </CardContent>
+          </Card>
 
-        {/* كارد لعبة إكس أو */}
-        <Card className="w-full bg-white/95 dark:bg-black/80 backdrop-blur-sm border-white/20">
-          <CardHeader className="text-center">
-            <CardTitle className="text-gray-900 dark:text-white">❌⭕ لعبة إكس أو</CardTitle>
-            <CardDescription className="text-gray-600 dark:text-gray-300">
-              تحدى صديقك وجرب من يفوز
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button 
-              onClick={() => createNewGame('xo')}
-              className="w-full text-lg py-6 bg-gradient-to-r from-green-600 to-teal-600 hover:from-green-700 hover:to-teal-700 text-white border-0 shadow-lg hover:shadow-xl transition-all duration-300"
-            >
-              <Gamepad2 className="ml-2 h-5 w-5" />
-              🆕 إنشاء لعبة جديدة
-            </Button>
-          </CardContent>
-        </Card>
+          {/* كارد لعبة إكس أو */}
+          <Card className="group bg-gradient-to-br from-green-900/80 to-emerald-800/80 backdrop-blur-md border-green-400/30 hover:border-green-400/60 transition-all duration-500 hover:scale-105">
+            <CardHeader className="text-center pb-3">
+              <div className="flex justify-center mb-2">
+                <div className="bg-green-500/20 p-3 rounded-full">
+                  <span className="text-2xl">❌⭕</span>
+                </div>
+              </div>
+              <CardTitle className="text-white group-hover:text-green-300 transition-colors">لعبة إكس أو</CardTitle>
+              <CardDescription className="text-green-200/80">
+                تحدى صديقك وجرب من يفوز
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button 
+                onClick={() => createNewGame('xo')}
+                className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white border-0 shadow-lg hover:shadow-green-500/30 transition-all duration-300 group-hover:shadow-green-500/50"
+              >
+                <Gamepad2 className="ml-2 h-5 w-5" />
+                إنشاء لعبة
+              </Button>
+            </CardContent>
+          </Card>
 
-        {/* كارد لعبة السلم والثعبان */}
-        <Card className="w-full bg-white/95 dark:bg-black/80 backdrop-blur-sm border-white/20">
-          <CardHeader className="text-center">
-            <CardTitle className="text-gray-900 dark:text-white">🐍🪜 السلم والثعبان</CardTitle>
-            <CardDescription className="text-gray-600 dark:text-gray-300">
-              العب مع أصدقائك (حتى 4 لاعبين)
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button 
-              onClick={() => createNewGame('snakes')}
-              className="w-full text-lg py-6 bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700 text-white border-0 shadow-lg hover:shadow-xl transition-all duration-300"
-            >
-              <Users className="ml-2 h-5 w-5" />
-              🆕 إنشاء لعبة جديدة
-            </Button>
-          </CardContent>
-        </Card>
+          {/* كارد لعبة السلم والثعبان */}
+          <Card className="group bg-gradient-to-br from-orange-900/80 to-red-800/80 backdrop-blur-md border-orange-400/30 hover:border-orange-400/60 transition-all duration-500 hover:scale-105">
+            <CardHeader className="text-center pb-3">
+              <div className="flex justify-center mb-2">
+                <div className="bg-orange-500/20 p-3 rounded-full">
+                  <span className="text-2xl">🐍🪜</span>
+                </div>
+              </div>
+              <CardTitle className="text-white group-hover:text-orange-300 transition-colors">السلم والثعبان</CardTitle>
+              <CardDescription className="text-orange-200/80">
+                العب مع أصدقائك (حتى 4 لاعبين)
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button 
+                onClick={() => createNewGame('snakes')}
+                className="w-full bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700 text-white border-0 shadow-lg hover:shadow-orange-500/30 transition-all duration-300 group-hover:shadow-orange-500/50"
+              >
+                <Users className="ml-2 h-5 w-5" />
+                إنشاء لعبة
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
 
-        <div className="text-center text-xs text-white/70 border-t border-white/20 pt-4 drop-shadow">
-          <p>© 2024 شاورما جيمر - جميع الحقوق محفوظة</p>
+        {/* الفوتر */}
+        <div className="text-center text-sm text-white/70 border-t border-white/20 pt-6 mt-6">
+          <p className="flex items-center justify-center gap-2">
+            <span>© 2024 شاورما جيمر - جميع الحقوق محفوظة</span>
+            <Sparkles className="h-4 w-4 text-yellow-400" />
+          </p>
           <p>مطورة خصيصاً لمجتمع اكس دريم</p>
         </div>
       </div>
+
+      {/* إضافة أنميشن للجسيمات */}
+      <style>
+        {`
+          @keyframes float {
+            0% {
+              transform: translateY(0) rotate(0deg);
+              opacity: 1;
+            }
+            100% {
+              transform: translateY(-100vh) rotate(360deg);
+              opacity: 0;
+            }
+          }
+          .animate-float {
+            animation: float linear infinite;
+          }
+        `}
+      </style>
     </div>
   );
 };
