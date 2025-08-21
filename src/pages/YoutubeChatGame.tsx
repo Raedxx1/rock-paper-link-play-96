@@ -2,19 +2,19 @@ import { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Copy, ArrowLeft, Youtube, Crown } from 'lucide-react';
+import { Copy, ArrowLeft, Youtube, Crown, RefreshCw } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 
 interface YoutubeChatRoom {
   id: string;
   youtube_url: string;
+  youtube_video_id: string;
   correct_answers: string[];
-  game_status: 'waiting' | 'playing' | 'completed';
   winners: string[];
   player1_name: string;
+  game_status: 'waiting' | 'playing' | 'completed';
+  last_checked: string;
 }
 
 const YoutubeChatGame = () => {
@@ -24,11 +24,11 @@ const YoutubeChatGame = () => {
   const isHost = searchParams.get('host') === 'true';
   
   const [roomData, setRoomData] = useState<YoutubeChatRoom | null>(null);
-  const [playerName, setPlayerName] = useState('');
-  const [answer, setAnswer] = useState('');
   const [loading, setLoading] = useState(true);
-  const [joined, setJoined] = useState(false);
-  
+  const [checking, setChecking] = useState(false);
+
+  const YOUTUBE_API_KEY = 'AIzaSyBt3o2l9-0b-HnsaZlwK1wTszwTxQbfUCU';
+
   useEffect(() => {
     if (!roomCode) {
       navigate('/');
@@ -83,59 +83,75 @@ const YoutubeChatGame = () => {
     setLoading(false);
   };
 
-  const joinGame = async () => {
-    if (!playerName.trim()) {
-      toast({
-        title: "❌ يرجى إدخال اسمك",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    setJoined(true);
-    toast({
-      title: "✅ تم الانضمام بنجاح",
-      description: "يمكنك الآن المشاركة في اللعبة"
-    });
-  };
-
-  const submitAnswer = async () => {
-    if (!roomData || !answer.trim() || !joined) return;
-
-    // التحقق من الإجابة
-    const isCorrect = roomData.correct_answers.some(correctAnswer => 
-      answer.trim().toLowerCase() === correctAnswer.toLowerCase()
-    );
-
-    if (isCorrect) {
-      // إذا كانت الإجابة صحيحة، نضيف اللاعب إلى قائمة الفائزين
-      const newWinners = [...roomData.winners, playerName];
+  const checkYouTubeComments = async () => {
+    if (!roomData || roomData.winners.length >= 3) return;
+    
+    setChecking(true);
+    
+    try {
+      // جلب التعليقات من فيديو اليوتيوب
+      const response = await fetch(
+        `https://www.googleapis.com/youtube/v3/commentThreads?part=snippet&videoId=${roomData.youtube_video_id}&key=${YOUTUBE_API_KEY}&maxResults=100`
+      );
       
-      const { error } = await supabase
-        .from('youtube_chat_rooms')
-        .update({ winners: newWinners })
-        .eq('id', roomCode);
-
-      if (error) {
-        toast({
-          title: "❌ خطأ في إرسال الإجابة",
-          variant: "destructive"
-        });
-      } else {
-        toast({
-          title: "🎉 إجابة صحيحة!",
-          description: `أنت الفائز رقم ${newWinners.length}`,
-        });
+      if (!response.ok) {
+        throw new Error('Failed to fetch comments');
       }
-    } else {
+      
+      const data = await response.json();
+      
+      if (data.items && data.items.length > 0) {
+        const newWinners = [...roomData.winners];
+        
+        // التحقق من كل تعليق
+        for (const item of data.items) {
+          const comment = item.snippet.topLevelComment.snippet;
+          const author = comment.authorDisplayName;
+          const text = comment.textDisplay;
+          
+          // التحقق إذا كانت الإجابة صحيحة
+          const isCorrect = roomData.correct_answers.some(answer => 
+            text.toLowerCase().includes(answer.toLowerCase())
+          );
+          
+          // إذا كانت الإجابة صحيحة ولم يكن اللاعب فائزاً بعد
+          if (isCorrect && !newWinners.includes(author) && newWinners.length < 3) {
+            newWinners.push(author);
+            toast({
+              title: "🎉 فائز جديد!",
+              description: `${author} أجاب إجابة صحيحة!`
+            });
+          }
+          
+          // إذا وصلنا إلى 3 فائزين، نتوقف
+          if (newWinners.length >= 3) break;
+        }
+        
+        // تحديث قاعدة البيانات بالفائزين الجدد
+        if (newWinners.length > roomData.winners.length) {
+          const { error } = await supabase
+            .from('youtube_chat_rooms')
+            .update({ 
+              winners: newWinners,
+              last_checked: new Date().toISOString()
+            })
+            .eq('id', roomCode);
+            
+          if (error) {
+            console.error('Error updating winners:', error);
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error checking YouTube comments:', error);
       toast({
-        title: "❌ إجابة خاطئة",
-        description: "حاول مرة أخرى",
+        title: "❌ خطأ في جلب التعليقات",
+        description: "تأكد من صحة رابط الفيديو",
         variant: "destructive"
       });
+    } finally {
+      setChecking(false);
     }
-
-    setAnswer('');
   };
 
   const shareRoom = async () => {
@@ -180,34 +196,6 @@ const YoutubeChatGame = () => {
     );
   }
 
-  if (!joined) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 flex items-center justify-center p-4" dir="rtl">
-        <Card className="w-full max-w-md">
-          <CardHeader className="text-center">
-            <CardTitle className="flex items-center justify-center gap-2">
-              <Youtube className="h-6 w-6 text-red-500" />
-              انضمام إلى لعبة شات يوتيوب
-            </CardTitle>
-            <CardDescription>ادخل اسمك للانضمام إلى اللعبة</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label>اسمك</Label>
-              <Input
-                value={playerName}
-                onChange={(e) => setPlayerName(e.target.value)}
-                placeholder="أدخل اسمك هنا"
-                onKeyPress={(e) => e.key === 'Enter' && joinGame()}
-              />
-            </div>
-            <Button onClick={joinGame} className="w-full">انضم الآن</Button>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 dark:from-gray-900 dark:to-gray-800 p-4" dir="rtl">
       <div className="max-w-4xl mx-auto space-y-6">
@@ -235,14 +223,14 @@ const YoutubeChatGame = () => {
               <Youtube className="h-6 w-6 text-red-500" />
               لعبة شات يوتيوب
             </CardTitle>
-            <CardDescription>أول 3 يجيبون الإجابة الصحيحة يفوزون!</CardDescription>
+            <CardDescription>أول 3 يكتبون الإجابة الصحيحة في تعليقات اليوتيوب يفوزون!</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="aspect-video mb-4">
               <iframe
                 width="100%"
                 height="100%"
-                src={`https://www.youtube.com/embed/${getYouTubeId(roomData.youtube_url)}`}
+                src={`https://www.youtube.com/embed/${roomData.youtube_video_id}`}
                 title="YouTube video player"
                 frameBorder="0"
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
@@ -250,30 +238,45 @@ const YoutubeChatGame = () => {
               ></iframe>
             </div>
             
-            <div className="text-center text-sm text-gray-600">
+            <div className="text-center text-sm text-gray-600 mb-4">
               البث المباشر hosted by: {roomData.player1_name}
+            </div>
+
+            <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
+              <h3 className="font-semibold text-yellow-800 mb-2">كيفية اللعب:</h3>
+              <ol className="list-decimal list-inside text-yellow-700 space-y-1 text-sm">
+                <li>اذهب إلى فيديو اليوتيوب أعلاه</li>
+                <li>اكتب الإجابة الصحيحة في قسم التعليقات</li>
+                <li>أول 3 أشخاص يكتبون الإجابة الصحيحة سيظهرون هنا كفائزين</li>
+                <li>الإجابات الصحيحة المقبولة: {roomData.correct_answers.join(' أو ')}</li>
+              </ol>
             </div>
           </CardContent>
         </Card>
 
-        {/* إدخال الإجابة */}
-        <Card>
-          <CardHeader>
-            <CardTitle>أدخل إجابتك</CardTitle>
-            <CardDescription>اكتب الإجابة التي تظهر في شات اليوتيوب</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="flex gap-2">
-              <Input
-                value={answer}
-                onChange={(e) => setAnswer(e.target.value)}
-                placeholder="أدخل إجابتك هنا..."
-                onKeyPress={(e) => e.key === 'Enter' && submitAnswer()}
-              />
-              <Button onClick={submitAnswer}>إرسال</Button>
-            </div>
-          </CardContent>
-        </Card>
+        {/* التحقق من التعليقات */}
+        {isHost && (
+          <Card>
+            <CardHeader>
+              <CardTitle>إدارة اللعبة (المضيف فقط)</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Button 
+                onClick={checkYouTubeComments} 
+                disabled={checking || roomData.winners.length >= 3}
+                className="w-full"
+              >
+                <RefreshCw className={`ml-2 h-4 w-4 ${checking ? 'animate-spin' : ''}`} />
+                {checking ? 'جاري التحقق من التعليقات...' : 'تحقق من التعليقات الجديدة'}
+              </Button>
+              {roomData.last_checked && (
+                <p className="text-sm text-gray-500 mt-2">
+                  آخر تحقق: {new Date(roomData.last_checked).toLocaleString('ar-SA')}
+                </p>
+              )}
+            </CardContent>
+          </Card>
+        )}
 
         {/* الفائزون */}
         <Card>
@@ -294,6 +297,7 @@ const YoutubeChatGame = () => {
                       {index + 1}
                     </div>
                     <span className="font-medium">{winner}</span>
+                    <span className="text-sm text-gray-500">(من يوتيوب)</span>
                   </div>
                 ))}
               </div>
@@ -304,12 +308,5 @@ const YoutubeChatGame = () => {
     </div>
   );
 };
-
-// دالة مساعدة لاستخراج معرف الفيديو من رابط اليوتيوب
-function getYouTubeId(url: string) {
-  const regExp = /^.*((youtu.be\/)|(v\/)|(\/u\/\w\/)|(embed\/)|(watch\?))\??v?=?([^#&?]*).*/;
-  const match = url.match(regExp);
-  return (match && match[7].length === 11) ? match[7] : null;
-}
 
 export default YoutubeChatGame;
