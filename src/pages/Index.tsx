@@ -36,11 +36,34 @@ const drawings = [
   { id: 8, image: 'https://raw.githubusercontent.com/Raedxx1/rock-paper-link-play-96/refs/heads/main/src/assets/drawing8.jpg', name: 'رسمة 8' },
 ];
 
-// دالة مساعدة لاستخراج معرف الفيديو من رابط اليوتيوب
+// دالة مساعدة لاستخراج معرف الفيديو من رابط اليوتيوب (تدعم جميع الصيغ)
 function getYouTubeId(url: string) {
-  const regExp = /^.*((youtu.be\/)|(v\/)|(\/u\/\w\/)|(embed\/)|(watch\?))\??v?=?([^#&?]*).*/;
-  const match = url.match(regExp);
-  return (match && match[7].length === 11) ? match[7] : null;
+  // الصيغ المختلفة لروابط اليوتيوب
+  const patterns = [
+    /youtu\.be\/([^#&?]{11})/,                                 // youtu.be/ID
+    /youtube\.com(?:\/embed)?\/([^#&?]{11})/,                  // youtube.com/embed/ID أو youtube.com/ID
+    /youtube\.com\/watch\?v=([^#&?]{11})/,                     // youtube.com/watch?v=ID
+    /youtube\.com\/live\/([^#&?]{11})/,                        // youtube.com/live/ID (البث المباشر)
+    /youtube\.com\/shorts\/([^#&?]{11})/,                      // youtube.com/shorts/ID
+    /youtube\.com\/embed\/([^#&?]{11})/,                       // youtube.com/embed/ID
+    /youtube\.com\/v\/([^#&?]{11})/,                           // youtube.com/v/ID
+  ];
+
+  for (const pattern of patterns) {
+    const match = url.match(pattern);
+    if (match && match[1]) {
+      return match[1];
+    }
+  }
+
+  // إذا لم تنجح أي من الصيغ أعلاه، نجرب استخراج المعلمة v من الرابط
+  const urlObj = new URL(url);
+  const vParam = urlObj.searchParams.get('v');
+  if (vParam && vParam.length === 11) {
+    return vParam;
+  }
+
+  return null;
 }
 
 const Index = () => {
