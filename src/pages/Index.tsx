@@ -9,7 +9,7 @@ import { ThemeToggle } from '@/components/ThemeToggle';
 import { YouTubeStats } from '@/components/YouTubeStats';
 
 // استيراد الصور
-const gamingBg = 'https://images.unsplash.com/photo-1542751371-adc38448a05e?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80';
+const gamingBg = 'https://raw.githubusercontent.com/Raedxx1/rock-paper-link-play-96/refs/heads/main/src/assets/gaming-bg.jpg';
 
 // إنشاء مصفوفات للصور (سنستخدم روابط من Unsplash للتمثيل)
 const memes = [
