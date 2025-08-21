@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -8,10 +8,53 @@ import { supabase } from '@/integrations/supabase/client';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { YouTubeStats } from '@/components/YouTubeStats';
 import gamingBg from '@/assets/gaming-bg.jpg';
+import Memes1 from '@/assets/Memes1.jpg';
+import Memes1 from '@/assets/Memes2.jpg';
+import Memes1 from '@/assets/Memes3.jpg';
+import Memes1 from '@/assets/Memes4.jpg';
+import Memes1 from '@/assets/Memes5.jpg';
+import Memes1 from '@/assets/Memes6.jpg';
+import Memes1 from '@/assets/Memes7.jpg';
+import Memes1 from '@/assets/Memes8.jpg';
+import Memes1 from '@/assets/drawing1.jpg';
+import Memes1 from '@/assets/drawing2.jpg';
+import Memes1 from '@/assets/drawing3.jpg';
+import Memes1 from '@/assets/drawing4.jpg';
+import Memes1 from '@/assets/drawing5.jpg';
+import Memes1 from '@/assets/drawing6.jpg';
+import Memes1 from '@/assets/drawing7.jpg';
+import Memes1 from '@/assets/drawing8.jpg';
+// استيراد الصور - ستحتاج إلى استيراد الصور الفعلية هنا
+// import Memes1 from '@/assets/Memes1.jpg';
+// import Memes2 from '@/assets/Memes2.jpg';
+// ... جميع الصور
 
 const Index = () => {
   const navigate = useNavigate();
   const [roomLink, setRoomLink] = useState<string>('');
+
+  // قوائم الصور (يجب استبدالها بالاستيراد الفعلي للصور)
+  const memes = [
+    { id: 1, name: 'Memes1.jpg' },
+    { id: 2, name: 'Memes2.jpg' },
+    { id: 3, name: 'Memes3.jpg' },
+    { id: 4, name: 'Memes4.jpg' },
+    { id: 5, name: 'Memes5.jpg' },
+    { id: 6, name: 'Memes6.jpg' },
+    { id: 7, name: 'Memes7.jpg' },
+    { id: 8, name: 'Memes8.jpg' },
+  ];
+
+  const drawings = [
+    { id: 1, name: 'drawing1.jpg' },
+    { id: 2, name: 'drawing2.jpg' },
+    { id: 3, name: 'drawing3.jpg' },
+    { id: 4, name: 'drawing4.jpg' },
+    { id: 5, name: 'drawing5.jpg' },
+    { id: 6, name: 'drawing6.jpg' },
+    { id: 7, name: 'drawing7.jpg' },
+    { id: 8, name: 'drawing8.jpg' },
+  ];
 
   const generateRoomCode = (gameType: string) => {
     const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
@@ -118,6 +161,32 @@ const Index = () => {
         ))}
       </div>
 
+      {/* معرض الميمز على اليمين */}
+      <div className="absolute right-4 top-0 h-full w-32 hidden lg:block overflow-hidden">
+        <div className="h-full animate-vertical-scroll">
+          {[...memes, ...memes].map((meme, index) => (
+            <div key={`${meme.id}-${index}`} className="mb-6 last:mb-0">
+              <div className="w-32 h-32 rounded-lg overflow-hidden border-2 border-yellow-400 shadow-lg bg-gray-800 flex items-center justify-center">
+                <span className="text-white text-xs text-center p-2">#{meme.id} {meme.name}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* معرض الرسمات على اليسار */}
+      <div className="absolute left-4 top-0 h-full w-32 hidden lg:block overflow-hidden">
+        <div className="h-full animate-vertical-scroll-reverse">
+          {[...drawings, ...drawings].map((drawing, index) => (
+            <div key={`${drawing.id}-${index}`} className="mb-6 last:mb-0">
+              <div className="w-32 h-32 rounded-lg overflow-hidden border-2 border-blue-400 shadow-lg bg-gray-800 flex items-center justify-center">
+                <span className="text-white text-xs text-center p-2">#{drawing.id} {drawing.name}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
       <div className="relative z-10 w-full max-w-2xl space-y-8">
         {/* الهيدر */}
         <div className="text-center space-y-4 mb-6">
@@ -133,38 +202,36 @@ const Index = () => {
           <p className="text-xl text-white/90 drop-shadow-md">منصة الألعاب العربية - العب مع أصدقائك أونلاين!</p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* معلومات المطور */}
-          <Card className="bg-gradient-to-br from-blue-900/70 to-purple-900/70 backdrop-blur-md border-blue-500/30 text-white">
-            <CardContent className="p-6">
-              <div className="flex items-start justify-between">
-                <div>
-                  <p className="flex items-center gap-2 font-semibold text-blue-300">
-                    <Crown className="h-5 w-5" fill="currentColor" />
-                    المطور: شاورما جيمر
-                  </p>
-                  <p className="mt-2 text-sm text-blue-200">مخصص لمجتمع اكس دريم</p>
-                </div>
-                <ThemeToggle />
-              </div>
-            </CardContent>
-          </Card>
+        {/* معلومات المطور وإحصائيات اليوتيوب */}
+        <div className="flex flex-col gap-6">
+          <div className="flex justify-between items-center bg-blue-900/50 p-4 rounded-lg border border-blue-500/30">
+            <div>
+              <p className="flex items-center gap-2 font-semibold text-blue-300">
+                <Crown className="h-5 w-5" fill="currentColor" />
+                المطور: شاورما جيمر
+              </p>
+              <p className="mt-1 text-sm text-blue-200">مخصص لمجتمع اكس دريم</p>
+            </div>
+            <ThemeToggle />
+          </div>
 
-          {/* إحصائيات اليوتيوب - محفوظة كما هي */}
-          <YouTubeStats />
+          {/* إحصائيات اليوتيوب - محسنة للحجم والوضوح */}
+          <div className="bg-gradient-to-r from-purple-900/50 to-pink-900/50 p-4 rounded-lg border border-purple-400/30">
+            <YouTubeStats />
+          </div>
         </div>
 
-        {/* ألعاب */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {/* ألعاب - مرتبة عموديا */}
+        <div className="space-y-6">
           {/* كارد حجرة ورقة مقص */}
-          <Card className="group bg-gradient-to-br from-blue-900/80 to-cyan-800/80 backdrop-blur-md border-blue-400/30 hover:border-blue-400/60 transition-all duration-500 hover:scale-105">
+          <Card className="bg-gradient-to-r from-blue-900/80 to-cyan-800/80 backdrop-blur-md border-blue-400/30">
             <CardHeader className="text-center pb-3">
               <div className="flex justify-center mb-2">
                 <div className="bg-blue-500/20 p-3 rounded-full">
                   <span className="text-2xl">🪨📄✂️</span>
                 </div>
               </div>
-              <CardTitle className="text-white group-hover:text-blue-300 transition-colors">حجرة ورقة مقص</CardTitle>
+              <CardTitle className="text-white">حجرة ورقة مقص</CardTitle>
               <CardDescription className="text-blue-200/80">
                 أنشئ غرفة جديدة وشارك الرابط
               </CardDescription>
@@ -172,7 +239,7 @@ const Index = () => {
             <CardContent>
               <Button 
                 onClick={() => createNewGame('rps')} 
-                className="w-full bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white border-0 shadow-lg hover:shadow-blue-500/30 transition-all duration-300 group-hover:shadow-blue-500/50"
+                className="w-full bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white border-0 shadow-lg hover:shadow-blue-500/30 transition-all duration-300"
               >
                 <Plus className="ml-2 h-5 w-5" />
                 إنشاء لعبة
@@ -181,14 +248,14 @@ const Index = () => {
           </Card>
 
           {/* كارد لعبة إكس أو */}
-          <Card className="group bg-gradient-to-br from-green-900/80 to-emerald-800/80 backdrop-blur-md border-green-400/30 hover:border-green-400/60 transition-all duration-500 hover:scale-105">
+          <Card className="bg-gradient-to-r from-green-900/80 to-emerald-800/80 backdrop-blur-md border-green-400/30">
             <CardHeader className="text-center pb-3">
               <div className="flex justify-center mb-2">
                 <div className="bg-green-500/20 p-3 rounded-full">
                   <span className="text-2xl">❌⭕</span>
                 </div>
               </div>
-              <CardTitle className="text-white group-hover:text-green-300 transition-colors">لعبة إكس أو</CardTitle>
+              <CardTitle className="text-white">لعبة إكس أو</CardTitle>
               <CardDescription className="text-green-200/80">
                 تحدى صديقك وجرب من يفوز
               </CardDescription>
@@ -196,7 +263,7 @@ const Index = () => {
             <CardContent>
               <Button 
                 onClick={() => createNewGame('xo')}
-                className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white border-0 shadow-lg hover:shadow-green-500/30 transition-all duration-300 group-hover:shadow-green-500/50"
+                className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white border-0 shadow-lg hover:shadow-green-500/30 transition-all duration-300"
               >
                 <Gamepad2 className="ml-2 h-5 w-5" />
                 إنشاء لعبة
@@ -205,14 +272,14 @@ const Index = () => {
           </Card>
 
           {/* كارد لعبة السلم والثعبان */}
-          <Card className="group bg-gradient-to-br from-orange-900/80 to-red-800/80 backdrop-blur-md border-orange-400/30 hover:border-orange-400/60 transition-all duration-500 hover:scale-105">
+          <Card className="bg-gradient-to-r from-orange-900/80 to-red-800/80 backdrop-blur-md border-orange-400/30">
             <CardHeader className="text-center pb-3">
               <div className="flex justify-center mb-2">
                 <div className="bg-orange-500/20 p-3 rounded-full">
                   <span className="text-2xl">🐍🪜</span>
                 </div>
               </div>
-              <CardTitle className="text-white group-hover:text-orange-300 transition-colors">السلم والثعبان</CardTitle>
+              <CardTitle className="text-white">السلم والثعبان</CardTitle>
               <CardDescription className="text-orange-200/80">
                 العب مع أصدقائك (حتى 4 لاعبين)
               </CardDescription>
@@ -220,7 +287,7 @@ const Index = () => {
             <CardContent>
               <Button 
                 onClick={() => createNewGame('snakes')}
-                className="w-full bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700 text-white border-0 shadow-lg hover:shadow-orange-500/30 transition-all duration-300 group-hover:shadow-orange-500/50"
+                className="w-full bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700 text-white border-0 shadow-lg hover:shadow-orange-500/30 transition-all duration-300"
               >
                 <Users className="ml-2 h-5 w-5" />
                 إنشاء لعبة
@@ -239,7 +306,7 @@ const Index = () => {
         </div>
       </div>
 
-      {/* إضافة أنميشن للجسيمات */}
+      {/* إضافة أنميشن للجسيمات والصور */}
       <style>
         {`
           @keyframes float {
@@ -252,8 +319,40 @@ const Index = () => {
               opacity: 0;
             }
           }
+          
+          @keyframes vertical-scroll {
+            0% {
+              transform: translateY(0);
+            }
+            100% {
+              transform: translateY(-50%);
+            }
+          }
+          
+          @keyframes vertical-scroll-reverse {
+            0% {
+              transform: translateY(-50%);
+            }
+            100% {
+              transform: translateY(0);
+            }
+          }
+          
           .animate-float {
             animation: float linear infinite;
+          }
+          
+          .animate-vertical-scroll {
+            animation: vertical-scroll 30s linear infinite;
+          }
+          
+          .animate-vertical-scroll-reverse {
+            animation: vertical-scroll-reverse 30s linear infinite;
+          }
+          
+          .animate-vertical-scroll:hover,
+          .animate-vertical-scroll-reverse:hover {
+            animation-play-state: paused;
           }
         `}
       </style>
