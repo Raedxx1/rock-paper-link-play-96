@@ -140,7 +140,7 @@ const SnakesLaddersHome = () => {
             />
           </div>
           <Button 
-  onClick={() => navigate('Index')} 
+  onClick={() => navigate('/')} 
   variant="outline" 
   className="absolute top-4 left-4"
   size="sm"
