@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -35,6 +35,13 @@ const drawings = [
   { id: 7, image: 'https://raw.githubusercontent.com/Raedxx1/rock-paper-link-play-96/refs/heads/main/src/assets/drawing7.jpg', name: 'رسمة 7' },
   { id: 8, image: 'https://raw.githubusercontent.com/Raedxx1/rock-paper-link-play-96/refs/heads/main/src/assets/drawing8.jpg', name: 'رسمة 8' },
 ];
+
+// دالة مساعدة لاستخراج معرف الفيديو من رابط اليوتيوب
+function getYouTubeId(url: string) {
+  const regExp = /^.*((youtu.be\/)|(v\/)|(\/u\/\w\/)|(embed\/)|(watch\?))\??v?=?([^#&?]*).*/;
+  const match = url.match(regExp);
+  return (match && match[7].length === 11) ? match[7] : null;
+}
 
 const Index = () => {
   const navigate = useNavigate();
@@ -90,6 +97,17 @@ const Index = () => {
         return;
       }
 
+      // استخراج معرف الفيديو من الرابط
+      const videoId = getYouTubeId(youtubeUrl);
+      if (!videoId) {
+        toast({
+          title: "❌ رابط اليوتيوب غير صحيح",
+          description: "تأكد من صحة الرابط",
+          variant: "destructive"
+        });
+        return;
+      }
+
       // تحقق من وجود إجابات صحيحة
       const validAnswers = correctAnswers.filter(answer => answer.trim() !== '');
       if (validAnswers.length === 0) {
@@ -124,7 +142,9 @@ const Index = () => {
         gameData.max_players = 4;
       } else if (gameType === 'youtube') {
         tableName = 'youtube_chat_rooms';
+        const videoId = getYouTubeId(youtubeUrl);
         gameData.youtube_url = youtubeUrl;
+        gameData.youtube_video_id = videoId;
         gameData.correct_answers = correctAnswers.filter(answer => answer.trim() !== '');
         gameData.winners = [];
       }
