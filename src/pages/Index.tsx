@@ -1,56 +1,42 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Copy, Plus, Gamepad2, Users, Crown, Sparkles, Zap, Star } from 'lucide-react';
+import { Plus, Gamepad2, Users, Crown, Sparkles, Zap, Star } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { YouTubeStats } from '@/components/YouTubeStats';
-import gamingBg from '@/assets/gaming-bg.jpg';
-import Memes1 from '@/assets/Memes1.jpg';
-import Memes2 from '@/assets/Memes2.jpg';
-import Memes3 from '@/assets/Memes3.jpg';
-import Memes4 from '@/assets/Memes4.jpg';
-import Memes5 from '@/assets/Memes5.jpg';
-import Memes6 from '@/assets/Memes6.jpg';
-import Memes7 from '@/assets/Memes7.jpg';
-import Memes8 from '@/assets/Memes8.jpg';
-import drawing1 from '@/assets/drawing1.jpg';
-import drawing2 from '@/assets/drawing2.jpg';
-import drawing3 from '@/assets/drawing3.jpg';
-import drawing4 from '@/assets/drawing4.jpg';
-import drawing5 from '@/assets/drawing5.jpg';
-import drawing6 from '@/assets/drawing6.jpg';
-import drawing7 from '@/assets/drawing7.jpg';
-import drawing8 from '@/assets/drawing8.jpg';
+
+// استيراد الصور
+const gamingBg = 'https://images.unsplash.com/photo-1542751371-adc38448a05e?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80';
+
+// إنشاء مصفوفات للصور (سنستخدم روابط من Unsplash للتمثيل)
+const memes = [
+  { id: 1, image: 'https://images.unsplash.com/photo-1611605698335-8b1569810432?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1074&q=80', name: 'ميمز 1' },
+  { id: 2, image: 'https://images.unsplash.com/photo-1611605698335-8b1569810432?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1074&q=80', name: 'ميمز 2' },
+  { id: 3, image: 'https://images.unsplash.com/photo-1611605698335-8b1569810432?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1074&q=80', name: 'ميمز 3' },
+  { id: 4, image: 'https://images.unsplash.com/photo-1611605698335-8b1569810432?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1074&q=80', name: 'ميمز 4' },
+  { id: 5, image: 'https://images.unsplash.com/photo-1611605698335-8b1569810432?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1074&q=80', name: 'ميمز 5' },
+  { id: 6, image: 'https://images.unsplash.com/photo-1611605698335-8b1569810432?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1074&q=80', name: 'ميمز 6' },
+  { id: 7, image: 'https://images.unsplash.com/photo-1611605698335-8b1569810432?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1074&q=80', name: 'ميمز 7' },
+  { id: 8, image: 'https://images.unsplash.com/photo-1611605698335-8b1569810432?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1074&q=80', name: 'ميمز 8' },
+];
+
+const drawings = [
+  { id: 1, image: 'https://images.unsplash.com/photo-1541961017774-22349e4a1262?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1058&q=80', name: 'رسمة 1' },
+  { id: 2, image: 'https://images.unsplash.com/photo-1541961017774-22349e4a1262?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1058&q=80', name: 'رسمة 2' },
+  { id: 3, image: 'https://images.unsplash.com/photo-1541961017774-22349e4a1262?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1058&q=80', name: 'رسمة 3' },
+  { id: 4, image: 'https://images.unsplash.com/photo-1541961017774-22349e4a1262?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1058&q=80', name: 'رسمة 4' },
+  { id: 5, image: 'https://images.unsplash.com/photo-1541961017774-22349e4a1262?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1058&q=80', name: 'رسمة 5' },
+  { id: 6, image: 'https://images.unsplash.com/photo-1541961017774-22349e4a1262?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1058&q=80', name: 'رسمة 6' },
+  { id: 7, image: 'https://images.unsplash.com/photo-1541961017774-22349e4a1262?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1058&q=80', name: 'رسمة 7' },
+  { id: 8, image: 'https://images.unsplash.com/photo-1541961017774-22349e4a1262?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1058&q=80', name: 'رسمة 8' },
+];
 
 const Index = () => {
   const navigate = useNavigate();
   const [roomLink, setRoomLink] = useState<string>('');
-
-  // استخدام الصور المستوردة مباشرة
-  const memes = [
-    { id: 1, image: Memes1, name: 'Memes1.jpg' },
-    { id: 2, image: Memes2, name: 'Memes2.jpg' },
-    { id: 3, image: Memes3, name: 'Memes3.jpg' },
-    { id: 4, image: Memes4, name: 'Memes4.jpg' },
-    { id: 5, image: Memes5, name: 'Memes5.jpg' },
-    { id: 6, image: Memes6, name: 'Memes6.jpg' },
-    { id: 7, image: Memes7, name: 'Memes7.jpg' },
-    { id: 8, image: Memes8, name: 'Memes8.jpg' },
-  ];
-
-  const drawings = [
-    { id: 1, image: drawing1, name: 'drawing1.jpg' },
-    { id: 2, image: drawing2, name: 'drawing2.jpg' },
-    { id: 3, image: drawing3, name: 'drawing3.jpg' },
-    { id: 4, image: drawing4, name: 'drawing4.jpg' },
-    { id: 5, image: drawing5, name: 'drawing5.jpg' },
-    { id: 6, image: drawing6, name: 'drawing6.jpg' },
-    { id: 7, image: drawing7, name: 'drawing7.jpg' },
-    { id: 8, image: drawing8, name: 'drawing8.jpg' },
-  ];
 
   const generateRoomCode = (gameType: string) => {
     const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
@@ -162,20 +148,12 @@ const Index = () => {
         <div className="h-full animate-vertical-scroll">
           {[...memes, ...memes].map((meme, index) => (
             <div key={`${meme.id}-${index}`} className="mb-6 last:mb-0">
-              <div className="w-32 h-32 rounded-lg overflow-hidden border-2 border-yellow-400 shadow-lg bg-gray-800 flex items-center justify-center">
+              <div className="w-32 h-32 rounded-lg overflow-hidden border-2 border-yellow-400 shadow-lg bg-gray-800">
                 <img 
                   src={meme.image} 
-                  alt={meme.name} 
+                  alt={meme.name}
                   className="w-full h-full object-cover"
-                  onError={(e) => {
-                    // إذا فشل تحميل الصورة، عرض نص بديل
-                    e.currentTarget.style.display = 'none';
-                    e.currentTarget.nextSibling?.style.display = 'flex';
-                  }}
                 />
-                <div className="hidden absolute inset-0 items-center justify-center bg-gray-800 p-2">
-                  <span className="text-white text-xs text-center">#{meme.id} {meme.name}</span>
-                </div>
               </div>
             </div>
           ))}
@@ -187,20 +165,12 @@ const Index = () => {
         <div className="h-full animate-vertical-scroll-reverse">
           {[...drawings, ...drawings].map((drawing, index) => (
             <div key={`${drawing.id}-${index}`} className="mb-6 last:mb-0">
-              <div className="w-32 h-32 rounded-lg overflow-hidden border-2 border-blue-400 shadow-lg bg-gray-800 flex items-center justify-center">
+              <div className="w-32 h-32 rounded-lg overflow-hidden border-2 border-blue-400 shadow-lg bg-gray-800">
                 <img 
                   src={drawing.image} 
-                  alt={drawing.name} 
+                  alt={drawing.name}
                   className="w-full h-full object-cover"
-                  onError={(e) => {
-                    // إذا فشل تحميل الصورة، عرض نص بديل
-                    e.currentTarget.style.display = 'none';
-                    e.currentTarget.nextSibling?.style.display = 'flex';
-                  }}
                 />
-                <div className="hidden absolute inset-0 items-center justify-center bg-gray-800 p-2">
-                  <span className="text-white text-xs text-center">#{drawing.id} {drawing.name}</span>
-                </div>
               </div>
             </div>
           ))}
@@ -216,10 +186,10 @@ const Index = () => {
               <Star className="absolute -top-1 -right-2 h-5 w-5 text-blue-400" fill="currentColor" />
             </div>
             <h1 className="text-5xl font-bold bg-gradient-to-r from-blue-400 via-purple-500 to-pink-500 bg-clip-text text-transparent drop-shadow-lg">
-              العاب XDreemB52
+              شاورما جيمر
             </h1>
           </div>
-          <p className="text-xl text-white/90 drop-shadow-md">منصة العاب وفعاليات مجتمع اكس دريم - العب مع أصدقائك أونلاين!</p>
+          <p className="text-xl text-white/90 drop-shadow-md">منصة الألعاب العربية - العب مع أصدقائك أونلاين!</p>
         </div>
 
         {/* معلومات المطور وإحصائيات اليوتيوب */}
