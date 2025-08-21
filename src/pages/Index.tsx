@@ -24,36 +24,32 @@ import drawing5 from '@/assets/drawing5.jpg';
 import drawing6 from '@/assets/drawing6.jpg';
 import drawing7 from '@/assets/drawing7.jpg';
 import drawing8 from '@/assets/drawing8.jpg';
-// استيراد الصور - ستحتاج إلى استيراد الصور الفعلية هنا
-// import Memes1 from '@/assets/Memes1.jpg';
-// import Memes2 from '@/assets/Memes2.jpg';
-// ... جميع الصور
 
 const Index = () => {
   const navigate = useNavigate();
   const [roomLink, setRoomLink] = useState<string>('');
 
-  // قوائم الصور (يجب استبدالها بالاستيراد الفعلي للصور)
+  // استخدام الصور المستوردة مباشرة
   const memes = [
-    { id: 1, name: 'Memes1.jpg' },
-    { id: 2, name: 'Memes2.jpg' },
-    { id: 3, name: 'Memes3.jpg' },
-    { id: 4, name: 'Memes4.jpg' },
-    { id: 5, name: 'Memes5.jpg' },
-    { id: 6, name: 'Memes6.jpg' },
-    { id: 7, name: 'Memes7.jpg' },
-    { id: 8, name: 'Memes8.jpg' },
+    { id: 1, image: Memes1, name: 'Memes1.jpg' },
+    { id: 2, image: Memes2, name: 'Memes2.jpg' },
+    { id: 3, image: Memes3, name: 'Memes3.jpg' },
+    { id: 4, image: Memes4, name: 'Memes4.jpg' },
+    { id: 5, image: Memes5, name: 'Memes5.jpg' },
+    { id: 6, image: Memes6, name: 'Memes6.jpg' },
+    { id: 7, image: Memes7, name: 'Memes7.jpg' },
+    { id: 8, image: Memes8, name: 'Memes8.jpg' },
   ];
 
   const drawings = [
-    { id: 1, name: 'drawing1.jpg' },
-    { id: 2, name: 'drawing2.jpg' },
-    { id: 3, name: 'drawing3.jpg' },
-    { id: 4, name: 'drawing4.jpg' },
-    { id: 5, name: 'drawing5.jpg' },
-    { id: 6, name: 'drawing6.jpg' },
-    { id: 7, name: 'drawing7.jpg' },
-    { id: 8, name: 'drawing8.jpg' },
+    { id: 1, image: drawing1, name: 'drawing1.jpg' },
+    { id: 2, image: drawing2, name: 'drawing2.jpg' },
+    { id: 3, image: drawing3, name: 'drawing3.jpg' },
+    { id: 4, image: drawing4, name: 'drawing4.jpg' },
+    { id: 5, image: drawing5, name: 'drawing5.jpg' },
+    { id: 6, image: drawing6, name: 'drawing6.jpg' },
+    { id: 7, image: drawing7, name: 'drawing7.jpg' },
+    { id: 8, image: drawing8, name: 'drawing8.jpg' },
   ];
 
   const generateRoomCode = (gameType: string) => {
@@ -167,7 +163,19 @@ const Index = () => {
           {[...memes, ...memes].map((meme, index) => (
             <div key={`${meme.id}-${index}`} className="mb-6 last:mb-0">
               <div className="w-32 h-32 rounded-lg overflow-hidden border-2 border-yellow-400 shadow-lg bg-gray-800 flex items-center justify-center">
-                <span className="text-white text-xs text-center p-2">#{meme.id} {meme.name}</span>
+                <img 
+                  src={meme.image} 
+                  alt={meme.name} 
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    // إذا فشل تحميل الصورة، عرض نص بديل
+                    e.currentTarget.style.display = 'none';
+                    e.currentTarget.nextSibling?.style.display = 'flex';
+                  }}
+                />
+                <div className="hidden absolute inset-0 items-center justify-center bg-gray-800 p-2">
+                  <span className="text-white text-xs text-center">#{meme.id} {meme.name}</span>
+                </div>
               </div>
             </div>
           ))}
@@ -180,7 +188,19 @@ const Index = () => {
           {[...drawings, ...drawings].map((drawing, index) => (
             <div key={`${drawing.id}-${index}`} className="mb-6 last:mb-0">
               <div className="w-32 h-32 rounded-lg overflow-hidden border-2 border-blue-400 shadow-lg bg-gray-800 flex items-center justify-center">
-                <span className="text-white text-xs text-center p-2">#{drawing.id} {drawing.name}</span>
+                <img 
+                  src={drawing.image} 
+                  alt={drawing.name} 
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    // إذا فشل تحميل الصورة، عرض نص بديل
+                    e.currentTarget.style.display = 'none';
+                    e.currentTarget.nextSibling?.style.display = 'flex';
+                  }}
+                />
+                <div className="hidden absolute inset-0 items-center justify-center bg-gray-800 p-2">
+                  <span className="text-white text-xs text-center">#{drawing.id} {drawing.name}</span>
+                </div>
               </div>
             </div>
           ))}
@@ -196,7 +216,7 @@ const Index = () => {
               <Star className="absolute -top-1 -right-2 h-5 w-5 text-blue-400" fill="currentColor" />
             </div>
             <h1 className="text-5xl font-bold bg-gradient-to-r from-blue-400 via-purple-500 to-pink-500 bg-clip-text text-transparent drop-shadow-lg">
-              شاورما جيمر
+              العاب XDreemB52
             </h1>
           </div>
           <p className="text-xl text-white/90 drop-shadow-md">منصة الألعاب العربية - العب مع أصدقائك أونلاين!</p>
