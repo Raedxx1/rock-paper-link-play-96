@@ -14,6 +14,7 @@ import Home from './pages/Home'; // صفحة إنشاء غرفة XO
 import SnakesLaddersRoom from './pages/SnakesLaddersRoom'; // صفحة السلم والثعبان
 import SnakesLaddersHome from './pages/SnakesLaddersHome'; // صفحة إنشاء غرفة السلم والثعبان
 import YoutubeChatGame from './pages/YoutubeChatGame';
+import YoutubeDrawingGame from './pages/YoutubeDrawingGame'; // الصفحة الجديدة للرسم
 
 const queryClient = new QueryClient();
 
@@ -42,6 +43,10 @@ const router = createBrowserRouter([
   {
     path: '/youtube-chat',
     element: <YoutubeChatGame />,
+  },
+  {
+    path: '/youtube-drawing', // المسار الجديد للرسم على يوتيوب
+    element: <YoutubeDrawingGame />,
   },
   {
     path: '/snakes-home', // مسار منفصل لصفحة إنشاء غرفة السلم والثعبان
