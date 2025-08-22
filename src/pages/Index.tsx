@@ -311,95 +311,32 @@ const Index = () => {
     </Card>
   );
 
-  // 🧩 بطاقة لعبة الرسم على يوتيوب
-  const YouTubeDrawingGameCard = () => (
-    <Card className="bg-gradient-to-r from-purple-900/80 to-pink-800/80 backdrop-blur-md border-purple-400/30">
-      <CardHeader className="text-center pb-3">
-        <div className="flex justify-center mb-2">
-          <div className="bg-purple-500/20 p-3 rounded-full">
-            <Brush className="h-6 w-6 text-purple-500" />
-          </div>
+// 🧩 بطاقة لعبة الرسم على يوتيوب (قريباً)
+const YouTubeDrawingGameCard = () => (
+  <Card className="bg-gradient-to-r from-purple-900/80 to-pink-800/80 backdrop-blur-md border-purple-400/30">
+    <CardHeader className="text-center pb-3">
+      <div className="flex justify-center mb-2">
+        <div className="bg-purple-500/20 p-3 rounded-full">
+          <Brush className="h-6 w-6 text-purple-500" />
         </div>
-        <CardTitle className="text-white">الرسم مع اليوتيوب</CardTitle>
-        <CardDescription className="text-purple-200/80">
-          ارسم وتفاعل مع متابعيك عبر اليوتيوب
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {!showDrawingForm ? (
-          <Button
-            onClick={() => setShowDrawingForm(true)}
-            className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white border-0 shadow-lg hover:shadow-purple-500/30 transition-all duration-300"
-          >
-            <Brush className="ml-2 h-5 w-5" />
-            إنشاء لعبة رسم
-          </Button>
-        ) : (
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="youtube-drawing-url" className="text-white">رابط البث المباشر لليوتيوب</Label>
-              <Input
-                id="youtube-drawing-url"
-                placeholder="https://www.youtube.com/live/XXXXXXXXXXX أو https://www.youtube.com/watch?v=XXXXXXXXXXX"
-                value={youtubeUrl}
-                onChange={(e) => setYoutubeUrl(e.target.value)}
-                className="bg-gray-800/50 border-gray-600 text-white"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label className="text-white">الإجابات الصحيحة (يمكن إضافة أكثر من إجابة)</Label>
-              {correctAnswers.map((answer, index) => (
-                <div key={index} className="flex gap-2">
-                  <Input
-                    value={answer}
-                    onChange={(e) => updateAnswer(index, e.target.value)}
-                    placeholder={`الإجابة الصحيحة ${index + 1}`}
-                    className="bg-gray-800/50 border-gray-600 text-white"
-                  />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="icon"
-                    onClick={() => removeAnswerField(index)}
-                    disabled={correctAnswers.length === 1}
-                    className="bg-red-700/50 border-red-500 text-white hover:bg-red-600"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-              ))}
-              <Button
-                type="button"
-                variant="outline"
-                className="w-full bg-gray-800/50 border-gray-600 text-white hover:bg-gray-700"
-                onClick={addAnswerField}
-              >
-                <Plus className="ml-2 h-4 w-4" />
-                إضافة إجابة
-              </Button>
-            </div>
-
-            <div className="flex gap-2">
-              <Button
-                onClick={() => createNewGame('youtube-drawing')}
-                className="flex-1 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
-              >
-                إنشاء اللعبة
-              </Button>
-              <Button
-                variant="outline"
-                onClick={() => setShowDrawingForm(false)}
-                className="bg-gray-800/50 border-gray-600 text-white hover:bg-gray-700"
-              >
-                إلغاء
-              </Button>
-            </div>
-          </div>
-        )}
-      </CardContent>
-    </Card>
-  );
+      </div>
+      <CardTitle className="text-white">الرسم مع اليوتيوب</CardTitle>
+      <CardDescription className="text-purple-200/80">
+        قريباً 🚧 — ميزة الرسم التفاعلي مع البث
+      </CardDescription>
+    </CardHeader>
+    <CardContent className="space-y-4">
+      <Button
+        disabled
+        className="w-full bg-gradient-to-r from-gray-600 to-gray-700 text-white opacity-70 cursor-not-allowed"
+      >
+        <Brush className="ml-2 h-5 w-5" />
+        قريبا 🚧
+      </Button>
+    </CardContent>
+  </Card>
+);
+    
 
   return (
     <div
