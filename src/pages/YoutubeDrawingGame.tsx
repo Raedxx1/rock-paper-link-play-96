@@ -58,20 +58,27 @@ const YoutubeDrawingGame = () => {
   const fetchRoomData = async () => {
     if (!roomCode) return;
 
-    const { data, error } = await supabase
-      .from('youtube_drawing_rooms')
-      .select('*')
-      .eq('id', roomCode)
-      .single();
+    try {
+      const { data, error } = await supabase
+        .from('youtube_drawing_rooms')
+        .select('*')
+        .eq('id', roomCode)
+        .single();
 
-    if (error) {
-      toast({ title: "❌ الغرفة غير موجودة", description: "تأكد من صحة الرابط", variant: "destructive" });
-      navigate('/');
-      return;
+      if (error) {
+        console.error('Error fetching room data:', error);
+        toast({ title: "❌ الغرفة غير موجودة", description: "تأكد من صحة الرابط", variant: "destructive" });
+        navigate('/');
+        return;
+      }
+
+      setRoomData(data as YoutubeDrawingRoom);
+    } catch (error) {
+      console.error('Error in fetchRoomData:', error);
+      toast({ title: "❌ خطأ في تحميل البيانات", variant: "destructive" });
+    } finally {
+      setLoading(false);
     }
-
-    setRoomData(data as YoutubeDrawingRoom);
-    setLoading(false);
   };
 
   useEffect(() => {
@@ -79,11 +86,18 @@ const YoutubeDrawingGame = () => {
       navigate('/');
       return;
     }
+
     fetchRoomData();
 
     const subscription = supabase
       .channel('youtube_drawing_room_changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'youtube_drawing_rooms', filter: `id=eq.${roomCode}` }, (payload) => {
+      .on('postgres_changes', { 
+        event: '*', 
+        schema: 'public', 
+        table: 'youtube_drawing_rooms', 
+        filter: `id=eq.${roomCode}` 
+      }, (payload) => {
+        console.log('Room update received:', payload);
         if (payload.eventType === 'UPDATE') {
           setRoomData(payload.new as YoutubeDrawingRoom);
         }
@@ -105,9 +119,11 @@ const YoutubeDrawingGame = () => {
         ctx.strokeStyle = color;
         ctx.lineWidth = brushSize;
 
+        // جعل خلفية اللوحة بيضاء
         ctx.fillStyle = '#FFFFFF';
         ctx.fillRect(0, 0, canvasRef.current.width, canvasRef.current.height);
 
+        // تحميل الرسم الموجود إذا كان هناك واحد
         if (roomData?.drawing_data) {
           loadDrawing(roomData.drawing_data);
         }
@@ -131,7 +147,14 @@ const YoutubeDrawingGame = () => {
   const saveDrawing = async () => {
     if (canvasRef.current) {
       const dataUrl = canvasRef.current.toDataURL();
-      await supabase.from('youtube_drawing_rooms').update({ drawing_data: dataUrl }).eq('id', roomCode);
+      const { error } = await supabase
+        .from('youtube_drawing_rooms')
+        .update({ drawing_data: dataUrl })
+        .eq('id', roomCode);
+      
+      if (error) {
+        console.error('Error saving drawing:', error);
+      }
     }
   };
 
@@ -168,22 +191,23 @@ const YoutubeDrawingGame = () => {
     }
   };
 
-  const stopDrawing = (e?: React.MouseEvent) => {
+  const stopDrawing = () => {
     if (!context || !isPainting) return;
-    const { offsetX, offsetY } = e?.nativeEvent || { offsetX: startPos.x, offsetY: startPos.y };
 
     if (tool === 'rectangle') {
-      const width = offsetX - startPos.x;
-      const height = offsetY - startPos.y;
       context.strokeStyle = color;
-      context.strokeRect(startPos.x, startPos.y, width, height);
+      context.strokeRect(startPos.x, startPos.y, context.canvas.width - startPos.x, context.canvas.height - startPos.y);
     } else if (tool === 'circle') {
-      const radius = Math.sqrt(Math.pow(offsetX - startPos.x, 2) + Math.pow(offsetY - startPos.y, 2));
+      const radius = Math.sqrt(
+        Math.pow(context.canvas.width - startPos.x, 2) + 
+        Math.pow(context.canvas.height - startPos.y, 2)
+      );
       context.beginPath();
       context.strokeStyle = color;
       context.arc(startPos.x, startPos.y, radius, 0, 2 * Math.PI);
       context.stroke();
     }
+    
     context.closePath();
     setIsPainting(false);
     saveDrawing();
@@ -199,9 +223,18 @@ const YoutubeDrawingGame = () => {
     saveDrawing();
   };
 
+  const clearCanvas = () => {
+    if (context && canvasRef.current) {
+      context.fillStyle = '#FFFFFF';
+      context.fillRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+      saveDrawing();
+    }
+  };
+
   // انضمام كرسام
   const joinAsDrawer = async () => {
     if (!playerName.trim() || !roomCode) return;
+    
     const { data, error } = await supabase
       .from('youtube_drawing_rooms')
       .update({
@@ -222,10 +255,33 @@ const YoutubeDrawingGame = () => {
     fetchRoomData();
   };
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center">⏳ جاري التحميل...</div>;
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 flex items-center justify-center" dir="rtl">
+        <div className="text-center">
+          <div className="text-4xl mb-4">⏳</div>
+          <p className="text-lg text-gray-600">جارٍ تحميل الغرفة...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!roomData) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 flex items-center justify-center" dir="rtl">
+        <div className="text-center">
+          <div className="text-4xl mb-4">❌</div>
+          <p className="text-lg text-gray-600">الغرفة غير موجودة</p>
+          <Button onClick={() => navigate('/')} className="mt-4">
+            العودة للرئيسية
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   // إذا رسام جديد يحاول يدخل وفيه رسام غيره
-  if (isDrawerMode && roomData?.current_drawer && roomData.current_drawer_session_id !== sessionId) {
+  if (isDrawerMode && roomData.current_drawer && roomData.current_drawer_session_id !== sessionId) {
     return (
       <div className="min-h-screen flex items-center justify-center p-4">
         <Card className="max-w-md w-full text-center">
@@ -234,7 +290,7 @@ const YoutubeDrawingGame = () => {
             <CardDescription>لا يمكنك دخول اللوحة الآن</CardDescription>
           </CardHeader>
           <CardContent>
-            <Button onClick={() => navigate('/')}>العودة للرئيسية</Button>
+            <Button onClick={() => navigate(`/youtube-drawing?r=${roomCode}`)}>العودة للمشاهدة</Button>
           </CardContent>
         </Card>
       </div>
@@ -242,16 +298,27 @@ const YoutubeDrawingGame = () => {
   }
 
   // إذا هو رسام بس لسه ما سجل اسمه
-  if (isDrawerMode && !roomData?.current_drawer) {
+  if (isDrawerMode && !roomData.current_drawer) {
     return (
       <div className="min-h-screen flex items-center justify-center p-4">
         <Card className="max-w-md w-full">
           <CardHeader>
             <CardTitle>✏️ دخول كرسام</CardTitle>
+            <CardDescription>أدخل اسمك للبدء في الرسم</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <Input value={playerName} onChange={(e) => setPlayerName(e.target.value)} placeholder="أدخل اسمك" />
-            <Button className="w-full" disabled={!playerName.trim()} onClick={joinAsDrawer}>انضم</Button>
+            <Input 
+              value={playerName} 
+              onChange={(e) => setPlayerName(e.target.value)} 
+              placeholder="أدخل اسمك"
+              className="text-center"
+            />
+            <Button className="w-full" disabled={!playerName.trim()} onClick={joinAsDrawer}>
+              انضم كرسام
+            </Button>
+            <Button variant="outline" className="w-full" onClick={() => navigate(`/youtube-drawing?r=${roomCode}`)}>
+              العودة للمشاهدة
+            </Button>
           </CardContent>
         </Card>
       </div>
@@ -259,42 +326,236 @@ const YoutubeDrawingGame = () => {
   }
 
   return (
-    <div className="p-4">
-      {/* باقي الكود نفس السابق لكن مع إظهار اسم الرسام للهوست */}
-      {isHost && roomData?.current_drawer_name && (
-        <div className="p-3 bg-blue-100 rounded mb-4">
-          👨‍🎨 الرسام الحالي: <b>{roomData.current_drawer_name}</b>
-        </div>
-      )}
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 dark:from-gray-900 dark:to-gray-800 p-4" dir="rtl">
+      <div className="max-w-6xl mx-auto space-y-6">
+        {/* شريط التنقل */}
+        <div className="flex justify-between items-center">
+          <Button onClick={() => navigate('/')} variant="outline" size="sm">
+            <ArrowLeft className="ml-2 h-4 w-4" />
+            الرئيسية
+          </Button>
 
-      {isDrawerMode && (
-        <div>
-          {/* أدوات الرسم */}
-          <div className="mb-2 flex gap-2">
-            <Button onClick={() => setTool('brush')}>🖌</Button>
-            <Button onClick={() => setTool('eraser')}>🩹</Button>
-            <Button onClick={() => setTool('rectangle')}>▭</Button>
-            <Button onClick={() => setTool('circle')}>⚪</Button>
-            <Button onClick={() => setTool('text')}>T</Button>
+          <div className="flex gap-2">
+            <Button onClick={() => navigator.clipboard.writeText(window.location.href)} variant="outline" size="sm">
+              <Copy className="ml-2 h-4 w-4" />
+              مشاركة الرابط
+            </Button>
           </div>
-          <canvas
-            ref={canvasRef}
-            width={640}
-            height={480}
-            onMouseDown={startDrawing}
-            onMouseMove={draw}
-            onMouseUp={stopDrawing}
-            onMouseLeave={stopDrawing}
-            className="border bg-white"
-          />
-          {showTextInput && (
-            <div className="mt-2 flex gap-2">
-              <Input value={textInput} onChange={(e) => setTextInput(e.target.value)} />
-              <Button onClick={addText}>إضافة</Button>
-            </div>
-          )}
         </div>
-      )}
+
+        {/* معلومات الغرفة */}
+        <Card>
+          <CardHeader className="text-center">
+            <CardTitle className="flex items-center justify-center gap-2">
+              <Youtube className="h-6 w-6 text-red-500" />
+              لعبة الرسم والتخمين (بث مباشر)
+            </CardTitle>
+            <CardDescription>أول 3 يكتبون الإجابة الصحيحة في شات البث المباشر يفوزون!</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="aspect-video mb-4">
+              <iframe
+                width="100%"
+                height="100%"
+                src={`https://www.youtube.com/embed/${roomData.youtube_video_id}?autoplay=1&rel=0`}
+                title="YouTube live stream"
+                frameBorder="0"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+              ></iframe>
+            </div>
+
+            <div className="text-center text-sm text-gray-600 dark:text-gray-300 mb-4">
+              البث المباشر بواسطة: {roomData.host_name}
+            </div>
+
+            {isDrawerMode && roomData.current_drawer_name && (
+              <div className="bg-green-100 dark:bg-green-900/30 p-3 rounded-lg mb-4">
+                <p className="font-medium text-green-800 dark:text-green-200">
+                  👨‍🎨 أنت الرسام: <span className="font-bold">{roomData.current_drawer_name}</span>
+                </p>
+              </div>
+            )}
+
+            {isHost && roomData.current_drawer_name && (
+              <div className="bg-blue-100 dark:bg-blue-900/30 p-3 rounded-lg mb-4">
+                <p className="font-medium text-blue-800 dark:text-blue-200">
+                  👨‍🎨 الرسام الحالي: <span className="font-bold">{roomData.current_drawer_name}</span>
+                </p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* لوحة الرسم للمتابع */}
+        {isDrawerMode && (
+          <Card>
+            <CardHeader>
+              <CardTitle>لوحة الرسم</CardTitle>
+              <CardDescription>ارسم الكلمة المطلوبة هنا وسيظهر رسمك للمشاهدين</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {/* أدوات الرسم */}
+              <div className="flex flex-wrap gap-2 mb-4 p-3 bg-gray-100 dark:bg-gray-800 rounded-lg">
+                <div className="flex items-center gap-2">
+                  <Button 
+                    variant={tool === 'brush' ? 'default' : 'outline'} 
+                    size="sm"
+                    onClick={() => setTool('brush')}
+                  >
+                    <Brush size={16} />
+                  </Button>
+                  <Button 
+                    variant={tool === 'eraser' ? 'default' : 'outline'} 
+                    size="sm"
+                    onClick={() => setTool('eraser')}
+                  >
+                    <Eraser size={16} />
+                  </Button>
+                  <Button 
+                    variant={tool === 'text' ? 'default' : 'outline'} 
+                    size="sm"
+                    onClick={() => setTool('text')}
+                  >
+                    <Type size={16} />
+                  </Button>
+                  <Button 
+                    variant={tool === 'rectangle' ? 'default' : 'outline'} 
+                    size="sm"
+                    onClick={() => setTool('rectangle')}
+                  >
+                    <Square size={16} />
+                  </Button>
+                  <Button 
+                    variant={tool === 'circle' ? 'default' : 'outline'} 
+                    size="sm"
+                    onClick={() => setTool('circle')}
+                  >
+                    <Circle size={16} />
+                  </Button>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <span className="text-sm dark:text-white">الحجم:</span>
+                  <input 
+                    type="range" 
+                    min="1" 
+                    max="20" 
+                    value={brushSize} 
+                    onChange={(e) => setBrushSize(parseInt(e.target.value))}
+                    className="w-20"
+                  />
+                  <span className="text-sm dark:text-white">{brushSize}</span>
+                </div>
+
+                <div className="flex items-center gap-1">
+                  <span className="text-sm dark:text-white">اللون:</span>
+                  <input 
+                    type="color" 
+                    value={color} 
+                    onChange={(e) => setColor(e.target.value)}
+                    className="w-8 h-8 cursor-pointer"
+                  />
+                  <div className="flex gap-1">
+                    {presetColors.map((presetColor, index) => (
+                      <div
+                        key={index}
+                        className="w-6 h-6 rounded cursor-pointer border"
+                        style={{ backgroundColor: presetColor }}
+                        onClick={() => setColor(presetColor)}
+                      />
+                    ))}
+                  </div>
+                </div>
+
+                <Button onClick={clearCanvas} variant="outline" size="sm">
+                  <RotateCcw className="ml-2 h-4 w-4" />
+                  مسح اللوحة
+                </Button>
+              </div>
+              
+              {/* إدخال النص */}
+              {showTextInput && (
+                <div className="mb-4 p-3 bg-gray-100 dark:bg-gray-800 rounded-lg">
+                  <input
+                    type="text"
+                    value={textInput}
+                    onChange={(e) => setTextInput(e.target.value)}
+                    placeholder="اكتب النص هنا..."
+                    className="px-3 py-2 border rounded-lg mr-2"
+                  />
+                  <Button onClick={addText} size="sm" className="mr-2">
+                    إضافة
+                  </Button>
+                  <Button onClick={() => setShowTextInput(false)} variant="outline" size="sm">
+                    إلغاء
+                  </Button>
+                </div>
+              )}
+              
+              {/* لوحة الرسم */}
+              <div className="border-2 border-gray-300 rounded-lg bg-white overflow-hidden">
+                <canvas
+                  ref={canvasRef}
+                  width={640}
+                  height={480}
+                  onMouseDown={startDrawing}
+                  onMouseMove={draw}
+                  onMouseUp={stopDrawing}
+                  onMouseLeave={stopDrawing}
+                  className="w-full h-auto cursor-crosshair touch-none bg-white"
+                />
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* عرض الرسم للمشاهدين والمضيف */}
+        {!isDrawerMode && roomData.drawing_data && (
+          <Card>
+            <CardHeader>
+              <CardTitle>الرسم الحالي</CardTitle>
+              <CardDescription>شاهد ما يرسمه الرسام حالياً</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="border-2 border-gray-300 rounded-lg bg-white overflow-hidden">
+                <img 
+                  src={roomData.drawing_data} 
+                  alt="الرسم الحالي" 
+                  className="w-full h-auto"
+                />
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* الفائزون */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Crown className="h-5 w-5 text-yellow-500" />
+              الفائزون
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {roomData.winners.length === 0 ? (
+              <p className="text-center text-gray-500 dark:text-gray-400">لا يوجد فائزون حتى الآن</p>
+            ) : (
+              <div className="space-y-2">
+                {roomData.winners.map((winner, index) => (
+                  <div key={index} className="flex items-center gap-2 p-2 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-gray-800 dark:to-gray-700 rounded-lg">
+                    <div className="w-8 h-8 flex items-center justify-center bg-yellow-500 text-white rounded-full">
+                      {index + 1}
+                    </div>
+                    <span className="font-medium dark:text-white">{winner}</span>
+                    <span className="text-sm text-gray-500 dark:text-gray-400">(من شات البث)</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 };
