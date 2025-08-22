@@ -51,6 +51,20 @@ const YoutubeDrawingGame = () => {
   const [context, setContext] = useState<CanvasRenderingContext2D | null>(null);
   const [startPos, setStartPos] = useState({ x: 0, y: 0 });
 
+  // مفتاح API مباشر
+  const YOUTUBE_API_KEY = "AIzaSyAmghODZ2TZaDr3MPTBPmpKKMSOmO3EEyQ";
+
+  // قائمة الكلمات العشوائية
+  const randomWords = [
+    'تفاحة', 'قلم', 'كتاب', 'شمس', 'قمر', 'سيارة', 'منزل', 'شجرة', 
+    'زهرة', 'قطة', 'كلب', 'طائر', 'سمكة', 'نظارة', 'هاتف', 'كمبيوتر',
+    'بحر', 'جبل', 'نهر', 'وردة', 'فراشة', 'نجمة', 'سحابة', 'طائرة',
+    'ساعة', 'باب', 'نافذة', 'سرير', 'كرسي', 'طاولة', 'زجاجة', 'كوب',
+    'قبعة', 'حذاء', 'جورب', 'قميص', 'سروال', 'فستان', 'عصا', 'كرة',
+    'سيف', 'درع', 'تاج', 'مفتاح', 'قفل', 'سلة', 'ورق', 'مقص',
+    'غيمة', 'قوس قزح', 'ثعبان', 'أسد', 'فيل', 'زرافة', 'قرد', 'بطريق'
+  ];
+
   // ألوان مسبقة
   const presetColors = ['#000000','#FF0000','#00FF00','#0000FF','#FFFF00','#FF00FF','#00FFFF','#FFFFFF','#FFA500','#800080'];
 
@@ -231,6 +245,164 @@ const YoutubeDrawingGame = () => {
     }
   };
 
+  // دالة تجيب liveChatId من videoId
+  const getLiveChatId = async (videoId: string): Promise<string | null> => {
+    try {
+      const res = await fetch(
+        `https://www.googleapis.com/youtube/v3/videos?part=liveStreamingDetails&id=${videoId}&key=${YOUTUBE_API_KEY}`
+      );
+      const data = await res.json();
+      return data.items?.[0]?.liveStreamingDetails?.activeLiveChatId || null;
+    } catch (error) {
+      console.error("Error getting live chat ID:", error);
+      return null;
+    }
+  };
+
+  // دالة تجيب رسائل الشات المباشر
+  const getLiveChatMessages = async (liveChatId: string, pageToken?: string) => {
+    try {
+      let url = `https://www.googleapis.com/youtube/v3/liveChat/messages?liveChatId=${liveChatId}&part=snippet,authorDetails&key=${YOUTUBE_API_KEY}&maxResults=2000`;
+      if (pageToken) {
+        url += `&pageToken=${pageToken}`;
+      }
+      
+      const res = await fetch(url);
+      const data = await res.json();
+      return data;
+    } catch (error) {
+      console.error("Error getting live chat messages:", error);
+      return { items: [], nextPageToken: null };
+    }
+  };
+
+  // التحقق من رسائل الشات
+  const checkYouTubeComments = async () => {
+    if (!roomData || roomData.winners.length >= 3) return;
+
+    setChecking(true);
+    try {
+      const liveChatId = await getLiveChatId(roomData.youtube_video_id);
+      if (!liveChatId) {
+        toast({
+          title: "❌ البث غير نشط",
+          description: "تأكد أن الرابط لبث مباشر نشط حالياً",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      let allMessages: any[] = [];
+      let nextPageToken = undefined;
+      
+      // جلب كل الرسائل المتاحة
+      do {
+        const data = await getLiveChatMessages(liveChatId, nextPageToken);
+        allMessages = [...allMessages, ...(data.items || [])];
+        nextPageToken = data.nextPageToken;
+        
+        // للتجنب من طلبات كثيرة جداً
+        if (allMessages.length > 500) break;
+      } while (nextPageToken);
+
+      if (allMessages.length === 0) {
+        toast({
+          title: "⚠️ لا توجد رسائل",
+          description: "لم يتم العثور على أي رسائل جديدة في الشات",
+        });
+        return;
+      }
+
+      const newWinners = [...roomData.winners];
+      let winnersAdded = 0;
+
+      for (const msg of allMessages) {
+        const author = msg.authorDetails.displayName;
+        const text = msg.snippet.displayMessage;
+        const publishedAt = new Date(msg.snippet.publishedAt);
+
+        // تجاهل الرسائل الأقدم من آخر تحقق
+        if (roomData.last_checked) {
+          const lastCheckedDate = new Date(roomData.last_checked);
+          if (publishedAt <= lastCheckedDate) continue;
+        }
+
+        // التحقق من صحة الإجابة
+        const isCorrect = roomData.correct_answers.some(answer =>
+          answer.trim() !== '' && text.toLowerCase().includes(answer.toLowerCase())
+        );
+
+        if (isCorrect && !newWinners.includes(author) && newWinners.length < 3) {
+          newWinners.push(author);
+          winnersAdded++;
+          
+          toast({
+            title: "🎉 فائز جديد!",
+            description: `${author} أجاب إجابة صحيحة!`
+          });
+        }
+
+        if (newWinners.length >= 3) break;
+      }
+
+      if (winnersAdded > 0 || allMessages.length > 0) {
+        await supabase
+          .from('youtube_drawing_rooms')
+          .update({
+            winners: newWinners,
+            last_checked: new Date().toISOString()
+          })
+          .eq('id', roomCode);
+      }
+
+    } catch (err: any) {
+      console.error("Error fetching live chat:", err);
+      toast({
+        title: "❌ خطأ في جلب الشات",
+        description: err.message || "تأكد أن البث شغال ومفتاح API صحيح",
+        variant: "destructive"
+      });
+    } finally {
+      setChecking(false);
+    }
+  };
+
+  const shareRoom = async () => {
+    const link = `${window.location.origin}/youtube-drawing?r=${roomCode}`;
+    try {
+      await navigator.clipboard.writeText(link);
+      toast({
+        title: "✅ تم نسخ الرابط!",
+        description: "شارك الرابط مع أصدقائك",
+      });
+    } catch (err) {
+      toast({
+        title: "❌ فشل في نسخ الرابط",
+        description: "حاول نسخه يدوياً",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const shareDrawerLink = async () => {
+    if (!roomCode) return;
+    
+    const drawerLink = `${window.location.origin}/youtube-drawing?r=${roomCode}&drawer=true`;
+    try {
+      await navigator.clipboard.writeText(drawerLink);
+      toast({
+        title: "✅ تم نسخ رابط الرسم!",
+        description: "شارك هذا الرابط مع الشخص الذي تريد منه الرسم",
+      });
+    } catch (err) {
+      toast({
+        title: "❌ فشل في نسخ الرابط",
+        description: "حاول نسخه يدوياً",
+        variant: "destructive"
+      });
+    }
+  };
+
   // انضمام كرسام
   const joinAsDrawer = async () => {
     if (!playerName.trim() || !roomCode) return;
@@ -253,6 +425,98 @@ const YoutubeDrawingGame = () => {
 
     toast({ title: "✅ انضممت كرسام", description: "ابدأ بالرسم!" });
     fetchRoomData();
+  };
+
+  const setRandomWord = async () => {
+    if (!roomCode) return;
+    
+    const randomWord = randomWords[Math.floor(Math.random() * randomWords.length)];
+    
+    const { error } = await supabase
+      .from('youtube_drawing_rooms')
+      .update({ 
+        current_word: randomWord,
+        game_status: 'drawing',
+        correct_answers: [randomWord]
+      })
+      .eq('id', roomCode);
+
+    if (error) {
+      toast({
+        title: "❌ خطأ في تعيين الكلمة",
+        description: error.message,
+        variant: "destructive"
+      });
+    } else {
+      toast({
+        title: "✅ تم تعيين كلمة جديدة",
+        description: `الكلمة: ${randomWord}`,
+      });
+    }
+  };
+
+  const setCustomWord = async () => {
+    if (!roomCode) return;
+    
+    const word = prompt('أدخل الكلمة المطلوب رسمها:');
+    if (!word) return;
+    
+    const { error } = await supabase
+      .from('youtube_drawing_rooms')
+      .update({ 
+        current_word: word,
+        game_status: 'drawing',
+        correct_answers: [word]
+      })
+      .eq('id', roomCode);
+
+    if (error) {
+      toast({
+        title: "❌ خطأ في تعيين الكلمة",
+        description: error.message,
+        variant: "destructive"
+      });
+    } else {
+      toast({
+        title: "✅ تم تعيين كلمة جديدة",
+        description: `الكلمة: ${word}`,
+      });
+    }
+  };
+
+  const resetGame = async () => {
+    if (!roomCode) return;
+    
+    const { error } = await supabase
+      .from('youtube_drawing_rooms')
+      .update({ 
+        winners: [],
+        game_status: 'waiting',
+        last_checked: new Date().toISOString(),
+        drawing_data: null,
+        current_drawer: null,
+        current_drawer_name: null,
+        current_drawer_session_id: null
+      })
+      .eq('id', roomCode);
+
+    if (error) {
+      toast({
+        title: "❌ خطأ في إعادة اللعبة",
+        description: error.message,
+        variant: "destructive"
+      });
+    } else {
+      // مسح اللوحة محلياً أيضاً
+      if (context && canvasRef.current) {
+        context.fillStyle = '#FFFFFF';
+        context.fillRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+      }
+      toast({
+        title: "✅ تم إعادة اللعبة",
+        description: "يمكنك بدء جولة جديدة",
+      });
+    }
   };
 
   if (loading) {
@@ -336,10 +600,17 @@ const YoutubeDrawingGame = () => {
           </Button>
 
           <div className="flex gap-2">
-            <Button onClick={() => navigator.clipboard.writeText(window.location.href)} variant="outline" size="sm">
+            <Button onClick={shareRoom} variant="outline" size="sm">
               <Copy className="ml-2 h-4 w-4" />
               مشاركة الرابط
             </Button>
+            
+            {isHost && (
+              <Button onClick={shareDrawerLink} variant="outline" size="sm">
+                <Brush className="ml-2 h-4 w-4" />
+                رابط للرسم
+              </Button>
+            )}
           </div>
         </div>
 
@@ -525,6 +796,61 @@ const YoutubeDrawingGame = () => {
                   className="w-full h-auto"
                 />
               </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* إدارة المضيف */}
+        {isHost && (
+          <Card>
+            <CardHeader>
+              <CardTitle>إدارة اللعبة (المضيف فقط)</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex gap-2">
+                <Button onClick={setRandomWord} className="flex-1">
+                  كلمة عشوائية
+                </Button>
+                <Button onClick={setCustomWord} variant="outline" className="flex-1">
+                  كلمة مخصصة
+                </Button>
+              </div>
+              
+              {roomData.current_word && (
+                <div className="bg-blue-50 dark:bg-blue-900/30 p-3 rounded-lg">
+                  <p className="font-medium text-blue-800 dark:text-blue-200">الكلمة الحالية:</p>
+                  <div className="flex items-center justify-between mt-2">
+                    <p className="text-xl dark:text-white">{showWord ? roomData.current_word : '••••••'}</p>
+                    <Button 
+                      onClick={() => setShowWord(!showWord)} 
+                      variant="outline" 
+                      size="sm"
+                    >
+                      {showWord ? <EyeOff className="ml-2 h-4 w-4" /> : <Eye className="ml-2 h-4 w-4" />}
+                      {showWord ? 'إخفاء' : 'إظهار'}
+                    </Button>
+                  </div>
+                </div>
+              )}
+              
+              <Button
+                onClick={checkYouTubeComments}
+                disabled={checking}
+                className="w-full"
+              >
+                <RefreshCw className={`ml-2 h-4 w-4 ${checking ? 'animate-spin' : ''}`} />
+                {checking ? 'جاري التحقق من التعليقات...' : 'تحقق من التعليقات الآن'}
+              </Button>
+              
+              <Button onClick={resetGame} variant="outline" className="w-full">
+                إعادة اللعبة
+              </Button>
+              
+              {roomData.last_checked && (
+                <p className="text-sm text-gray-500 dark:text-gray-400 text-center">
+                  آخر تحقق: {new Date(roomData.last_checked).toLocaleString('ar-SA')}
+                </p>
+              )}
             </CardContent>
           </Card>
         )}
