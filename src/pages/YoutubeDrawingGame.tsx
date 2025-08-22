@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Copy, ArrowLeft, Youtube, Crown, RefreshCw, Eye, EyeOff, Brush, Save, RotateCcw } from 'lucide-react';
+import { Copy, ArrowLeft, Youtube, Crown, RefreshCw, Eye, EyeOff, Brush, Save, RotateCcw, Eraser, Type, Square, Circle } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -34,9 +34,14 @@ const YoutubeDrawingGame = () => {
   const [isPainting, setIsPainting] = useState(false);
   const [color, setColor] = useState('#000000');
   const [brushSize, setBrushSize] = useState(5);
+  const [tool, setTool] = useState('brush'); // brush, eraser, text, rectangle, circle
+  const [textInput, setTextInput] = useState('');
+  const [showTextInput, setShowTextInput] = useState(false);
+  const [textPosition, setTextPosition] = useState({ x: 0, y: 0 });
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [context, setContext] = useState<CanvasRenderingContext2D | null>(null);
+  const [startPos, setStartPos] = useState({ x: 0, y: 0 });
 
   // مفتاح API مباشر
   const YOUTUBE_API_KEY = "AIzaSyBIuk3jEwfWwGpV6G3mY8jx2Otwbptj00A";
@@ -50,6 +55,12 @@ const YoutubeDrawingGame = () => {
     'قبعة', 'حذاء', 'جورب', 'قميص', 'سروال', 'فستان', 'عصا', 'كرة',
     'سيف', 'درع', 'تاج', 'مفتاح', 'قفل', 'سلة', 'ورق', 'مقص',
     'غيمة', 'قوس قزح', 'ثعبان', 'أسد', 'فيل', 'زرافة', 'قرد', 'بطريق'
+  ];
+
+  // ألوان مسبقة
+  const presetColors = [
+    '#000000', '#FF0000', '#00FF00', '#0000FF', '#FFFF00', 
+    '#FF00FF', '#00FFFF', '#FFFFFF', '#FFA500', '#800080'
   ];
 
   useEffect(() => {
@@ -108,6 +119,10 @@ const YoutubeDrawingGame = () => {
         ctx.strokeStyle = color;
         ctx.lineWidth = brushSize;
         
+        // جعل خلفية اللوحة بيضاء
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
         // تحميل الرسم الموجود إذا كان هناك واحد
         if (roomData?.drawing_data) {
           loadDrawing(roomData.drawing_data);
@@ -121,6 +136,9 @@ const YoutubeDrawingGame = () => {
       const img = new Image();
       img.onload = () => {
         context.clearRect(0, 0, canvasRef.current!.width, canvasRef.current!.height);
+        // إعادة تعيين الخلفية البيضاء
+        context.fillStyle = '#FFFFFF';
+        context.fillRect(0, 0, canvasRef.current!.width, canvasRef.current!.height);
         context.drawImage(img, 0, 0);
       };
       img.src = dataUrl;
@@ -359,7 +377,8 @@ const YoutubeDrawingGame = () => {
       .update({ 
         winners: [],
         game_status: 'waiting',
-        last_checked: new Date().toISOString()
+        last_checked: new Date().toISOString(),
+        drawing_data: null
       })
       .eq('id', roomCode);
 
@@ -370,6 +389,11 @@ const YoutubeDrawingGame = () => {
         variant: "destructive"
       });
     } else {
+      // مسح اللوحة محلياً أيضاً
+      if (context && canvasRef.current) {
+        context.fillStyle = '#FFFFFF';
+        context.fillRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+      }
       toast({
         title: "✅ تم إعادة اللعبة",
         description: "يمكنك بدء جولة جديدة",
@@ -388,44 +412,112 @@ const YoutubeDrawingGame = () => {
       if (error) {
         console.error('Error saving drawing:', error);
       } else {
-        toast({
-          title: "✅ تم حفظ الرسم",
-          description: "تم تحديث الرسم للمشاهدين",
-        });
+        // لا نعرض إشعاراً للحفاظ على سلاسة التجربة
       }
     }
   };
 
-  const startPainting = (e: React.MouseEvent) => {
+  const startDrawing = (e: React.MouseEvent) => {
     if (!context) return;
     
     const { offsetX, offsetY } = e.nativeEvent;
-    context.beginPath();
-    context.moveTo(offsetX, offsetY);
-    setIsPainting(true);
+    
+    if (tool === 'brush' || tool === 'eraser') {
+      context.beginPath();
+      context.moveTo(offsetX, offsetY);
+      setIsPainting(true);
+    } else if (tool === 'rectangle' || tool === 'circle') {
+      setStartPos({ x: offsetX, y: offsetY });
+      setIsPainting(true);
+    } else if (tool === 'text') {
+      setTextPosition({ x: offsetX, y: offsetY });
+      setShowTextInput(true);
+    }
   };
 
-  const paint = (e: React.MouseEvent) => {
+  const draw = (e: React.MouseEvent) => {
     if (!isPainting || !context) return;
     
     const { offsetX, offsetY } = e.nativeEvent;
-    context.lineTo(offsetX, offsetY);
-    context.stroke();
+    
+    if (tool === 'brush') {
+      context.strokeStyle = color;
+      context.lineTo(offsetX, offsetY);
+      context.stroke();
+    } else if (tool === 'eraser') {
+      context.strokeStyle = '#FFFFFF'; // لون الممحاة (أبيض)
+      context.lineTo(offsetX, offsetY);
+      context.stroke();
+    } else if (tool === 'rectangle' || tool === 'circle') {
+      // سنرسم الشكل عند التوقف عن السحب
+    }
   };
 
-  const stopPainting = () => {
+  const stopDrawing = () => {
     if (!context) return;
     
-    context.closePath();
+    if (tool === 'brush' || tool === 'eraser') {
+      context.closePath();
+    } else if ((tool === 'rectangle' || tool === 'circle') && isPainting) {
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+      
+      // حفظ حالة اللوحة الحالية
+      context.save();
+      
+      // رسم الشكل
+      if (tool === 'rectangle') {
+        context.strokeRect(
+          startPos.x, 
+          startPos.y, 
+          context.canvas.width - startPos.x, 
+          context.canvas.height - startPos.y
+        );
+      } else if (tool === 'circle') {
+        const radius = Math.sqrt(
+          Math.pow(context.canvas.width - startPos.x, 2) + 
+          Math.pow(context.canvas.height - startPos.y, 2)
+        );
+        context.beginPath();
+        context.arc(startPos.x, startPos.y, radius, 0, 2 * Math.PI);
+        context.stroke();
+      }
+      
+      // استعادة حالة اللوحة
+      context.restore();
+    }
+    
     setIsPainting(false);
+    // حفظ الرسم بعد كل حركة
+    saveDrawing();
+  };
+
+  const addText = () => {
+    if (!context || !textInput) return;
+    
+    context.font = `${brushSize * 5}px Arial`;
+    context.fillStyle = color;
+    context.fillText(textInput, textPosition.x, textPosition.y);
+    
+    setShowTextInput(false);
+    setTextInput('');
     saveDrawing();
   };
 
   const clearCanvas = () => {
     if (context && canvasRef.current) {
-      context.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+      context.fillStyle = '#FFFFFF';
+      context.fillRect(0, 0, canvasRef.current.width, canvasRef.current.height);
       saveDrawing();
     }
+  };
+
+  const fillBucket = () => {
+    if (!context || !canvasRef.current) return;
+    
+    context.fillStyle = color;
+    context.fillRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+    saveDrawing();
   };
 
   if (loading) {
@@ -455,7 +547,7 @@ const YoutubeDrawingGame = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 dark:from-gray-900 dark:to-gray-800 p-4" dir="rtl">
-      <div className="max-w-4xl mx-auto space-y-6">
+      <div className="max-w-6xl mx-auto space-y-6">
         {/* شريط التنقل */}
         <div className="flex justify-between items-center">
           <Button onClick={() => navigate('/')} variant="outline" size="sm">
@@ -527,45 +619,121 @@ const YoutubeDrawingGame = () => {
               <CardDescription>ارسم الكلمة المطلوبة هنا وسيظهر رسمك للمشاهدين</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="flex flex-wrap gap-2 mb-4">
-                <input 
-                  type="color" 
-                  value={color} 
-                  onChange={(e) => setColor(e.target.value)}
-                  className="w-10 h-10 cursor-pointer"
-                />
-                <input 
-                  type="range" 
-                  min="1" 
-                  max="20" 
-                  value={brushSize} 
-                  onChange={(e) => setBrushSize(parseInt(e.target.value))}
-                  className="w-24"
-                />
-                <span className="self-center text-gray-700 dark:text-gray-300">الحجم: {brushSize}</span>
-                <Button onClick={clearCanvas} variant="outline" size="sm">
-                  <RotateCcw className="ml-2 h-4 w-4" />
-                  مسح اللوحة
-                </Button>
+              {/* أدوات الرسم */}
+              <div className="flex flex-wrap gap-2 mb-4 p-3 bg-gray-100 dark:bg-gray-800 rounded-lg">
+                <div className="flex items-center gap-2">
+                  <Button 
+                    variant={tool === 'brush' ? 'default' : 'outline'} 
+                    size="sm"
+                    onClick={() => setTool('brush')}
+                  >
+                    <Brush size={16} />
+                  </Button>
+                  <Button 
+                    variant={tool === 'eraser' ? 'default' : 'outline'} 
+                    size="sm"
+                    onClick={() => setTool('eraser')}
+                  >
+                    <Eraser size={16} />
+                  </Button>
+                  <Button 
+                    variant={tool === 'text' ? 'default' : 'outline'} 
+                    size="sm"
+                    onClick={() => setTool('text')}
+                  >
+                    <Type size={16} />
+                  </Button>
+                  <Button 
+                    variant={tool === 'rectangle' ? 'default' : 'outline'} 
+                    size="sm"
+                    onClick={() => setTool('rectangle')}
+                  >
+                    <Square size={16} />
+                  </Button>
+                  <Button 
+                    variant={tool === 'circle' ? 'default' : 'outline'} 
+                    size="sm"
+                    onClick={() => setTool('circle')}
+                  >
+                    <Circle size={16} />
+                  </Button>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <span className="text-sm dark:text-white">الحجم:</span>
+                  <input 
+                    type="range" 
+                    min="1" 
+                    max="20" 
+                    value={brushSize} 
+                    onChange={(e) => setBrushSize(parseInt(e.target.value))}
+                    className="w-20"
+                  />
+                  <span className="text-sm dark:text-white">{brushSize}</span>
+                </div>
+
+                <div className="flex items-center gap-1">
+                  <span className="text-sm dark:text-white">اللون:</span>
+                  <input 
+                    type="color" 
+                    value={color} 
+                    onChange={(e) => setColor(e.target.value)}
+                    className="w-8 h-8 cursor-pointer"
+                  />
+                  <div className="flex gap-1">
+                    {presetColors.map((presetColor, index) => (
+                      <div
+                        key={index}
+                        className="w-6 h-6 rounded cursor-pointer border"
+                        style={{ backgroundColor: presetColor }}
+                        onClick={() => setColor(presetColor)}
+                      />
+                    ))}
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <Button onClick={clearCanvas} variant="outline" size="sm">
+                    <RotateCcw className="ml-2 h-4 w-4" />
+                    مسح اللوحة
+                  </Button>
+                  <Button onClick={fillBucket} variant="outline" size="sm">
+                    دلو الألوان
+                  </Button>
+                </div>
               </div>
               
-              <div className="border rounded-lg bg-white dark:bg-gray-800 overflow-hidden">
+              {/* إدخال النص */}
+              {showTextInput && (
+                <div className="mb-4 p-3 bg-gray-100 dark:bg-gray-800 rounded-lg">
+                  <input
+                    type="text"
+                    value={textInput}
+                    onChange={(e) => setTextInput(e.target.value)}
+                    placeholder="اكتب النص هنا..."
+                    className="px-3 py-2 border rounded-lg mr-2"
+                  />
+                  <Button onClick={addText} size="sm" className="mr-2">
+                    إضافة
+                  </Button>
+                  <Button onClick={() => setShowTextInput(false)} variant="outline" size="sm">
+                    إلغاء
+                  </Button>
+                </div>
+              )}
+              
+              {/* لوحة الرسم */}
+              <div className="border-2 border-gray-300 rounded-lg bg-white overflow-hidden">
                 <canvas
                   ref={canvasRef}
                   width={640}
                   height={480}
-                  onMouseDown={startPainting}
-                  onMouseMove={paint}
-                  onMouseUp={stopPainting}
-                  onMouseLeave={stopPainting}
-                  className="w-full h-auto cursor-crosshair touch-none"
+                  onMouseDown={startDrawing}
+                  onMouseMove={draw}
+                  onMouseUp={stopDrawing}
+                  onMouseLeave={stopDrawing}
+                  className="w-full h-auto cursor-crosshair touch-none bg-white"
                 />
-              </div>
-              <div className="flex gap-2 mt-4">
-                <Button onClick={saveDrawing}>
-                  <Save className="ml-2 h-4 w-4" />
-                  حفظ الرسم
-                </Button>
               </div>
             </CardContent>
           </Card>
@@ -579,7 +747,7 @@ const YoutubeDrawingGame = () => {
               <CardDescription>شاهد ما يرسمه الرسام حالياً</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="border rounded-lg bg-white dark:bg-gray-800 overflow-hidden">
+              <div className="border-2 border-gray-300 rounded-lg bg-white overflow-hidden">
                 <img 
                   src={roomData.drawing_data} 
                   alt="الرسم الحالي" 
