@@ -1,8 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Copy, ArrowLeft, Youtube, Crown, RefreshCw, Eye, EyeOff, Brush } from 'lucide-react';
+import { Copy, ArrowLeft, Youtube, Crown, RefreshCw, Eye, EyeOff, Brush, Save, RotateCcw } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -31,6 +31,12 @@ const YoutubeDrawingGame = () => {
   const [loading, setLoading] = useState(true);
   const [checking, setChecking] = useState(false);
   const [showWord, setShowWord] = useState(false);
+  const [isPainting, setIsPainting] = useState(false);
+  const [color, setColor] = useState('#000000');
+  const [brushSize, setBrushSize] = useState(5);
+
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [context, setContext] = useState<CanvasRenderingContext2D | null>(null);
 
   // مفتاح API مباشر
   const YOUTUBE_API_KEY = "AIzaSyBIuk3jEwfWwGpV6G3mY8jx2Otwbptj00A";
@@ -66,16 +72,60 @@ const YoutubeDrawingGame = () => {
         },
         (payload) => {
           if (payload.eventType === 'UPDATE') {
-            setRoomData(payload.new as YoutubeDrawingRoom);
+            const newData = payload.new as YoutubeDrawingRoom;
+            setRoomData(newData);
+            
+            // تحميل الرسم إذا كان هناك رسم جديد ولم يكن من الرسم الحالي
+            if (newData.drawing_data && canvasRef.current && !isPainting) {
+              loadDrawing(newData.drawing_data);
+            }
           }
         }
       )
       .subscribe();
 
+    // التحقق التلقائي من التعليقات كل 5 ثوان
+    const interval = setInterval(() => {
+      if (roomData && roomData.game_status === 'drawing') {
+        checkYouTubeComments();
+      }
+    }, 5000);
+
     return () => {
       supabase.removeChannel(subscription);
+      clearInterval(interval);
     };
-  }, [roomCode, navigate]);
+  }, [roomCode, navigate, isPainting]);
+
+  useEffect(() => {
+    if (canvasRef.current) {
+      const canvas = canvasRef.current;
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        setContext(ctx);
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.strokeStyle = color;
+        ctx.lineWidth = brushSize;
+        
+        // تحميل الرسم الموجود إذا كان هناك واحد
+        if (roomData?.drawing_data) {
+          loadDrawing(roomData.drawing_data);
+        }
+      }
+    }
+  }, [color, brushSize, roomData]);
+
+  const loadDrawing = (dataUrl: string) => {
+    if (context && canvasRef.current) {
+      const img = new Image();
+      img.onload = () => {
+        context.clearRect(0, 0, canvasRef.current!.width, canvasRef.current!.height);
+        context.drawImage(img, 0, 0);
+      };
+      img.src = dataUrl;
+    }
+  };
 
   const fetchRoomData = async () => {
     if (!roomCode) return;
@@ -139,11 +189,6 @@ const YoutubeDrawingGame = () => {
     try {
       const liveChatId = await getLiveChatId(roomData.youtube_video_id);
       if (!liveChatId) {
-        toast({
-          title: "❌ البث غير نشط",
-          description: "تأكد أن الرابط لبث مباشر نشط حالياً",
-          variant: "destructive"
-        });
         return;
       }
 
@@ -161,10 +206,6 @@ const YoutubeDrawingGame = () => {
       } while (nextPageToken);
 
       if (allMessages.length === 0) {
-        toast({
-          title: "⚠️ لا توجد رسائل",
-          description: "لم يتم العثور على أي رسائل جديدة في الشات",
-        });
         return;
       }
 
@@ -212,11 +253,6 @@ const YoutubeDrawingGame = () => {
 
     } catch (err: any) {
       console.error("Error fetching live chat:", err);
-      toast({
-        title: "❌ خطأ في جلب الشات",
-        description: err.message || "تأكد أن البث شغال ومفتاح API صحيح",
-        variant: "destructive"
-      });
     } finally {
       setChecking(false);
     }
@@ -341,6 +377,57 @@ const YoutubeDrawingGame = () => {
     }
   };
 
+  const saveDrawing = async () => {
+    if (canvasRef.current) {
+      const dataUrl = canvasRef.current.toDataURL();
+      const { error } = await supabase
+        .from('youtube_drawing_rooms')
+        .update({ drawing_data: dataUrl })
+        .eq('id', roomCode);
+
+      if (error) {
+        console.error('Error saving drawing:', error);
+      } else {
+        toast({
+          title: "✅ تم حفظ الرسم",
+          description: "تم تحديث الرسم للمشاهدين",
+        });
+      }
+    }
+  };
+
+  const startPainting = (e: React.MouseEvent) => {
+    if (!context) return;
+    
+    const { offsetX, offsetY } = e.nativeEvent;
+    context.beginPath();
+    context.moveTo(offsetX, offsetY);
+    setIsPainting(true);
+  };
+
+  const paint = (e: React.MouseEvent) => {
+    if (!isPainting || !context) return;
+    
+    const { offsetX, offsetY } = e.nativeEvent;
+    context.lineTo(offsetX, offsetY);
+    context.stroke();
+  };
+
+  const stopPainting = () => {
+    if (!context) return;
+    
+    context.closePath();
+    setIsPainting(false);
+    saveDrawing();
+  };
+
+  const clearCanvas = () => {
+    if (context && canvasRef.current) {
+      context.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+      saveDrawing();
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 flex items-center justify-center" dir="rtl">
@@ -413,13 +500,13 @@ const YoutubeDrawingGame = () => {
               ></iframe>
             </div>
 
-            <div className="text-center text-sm text-gray-600 mb-4">
+            <div className="text-center text-sm text-gray-600 dark:text-gray-300 mb-4">
               البث المباشر بواسطة: {roomData.host_name}
             </div>
 
-            <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
-              <h3 className="font-semibold text-yellow-800 mb-2">كيفية اللعب:</h3>
-              <ol className="list-decimal list-inside text-yellow-700 space-y-1 text-sm">
+            <div className="bg-yellow-50 dark:bg-yellow-900/30 p-4 rounded-lg border border-yellow-200 dark:border-yellow-700">
+              <h3 className="font-semibold text-yellow-800 dark:text-yellow-200 mb-2">كيفية اللعب:</h3>
+              <ol className="list-decimal list-inside text-yellow-700 dark:text-yellow-300 space-y-1 text-sm">
                 <li>اذهب إلى البث المباشر أعلاه</li>
                 <li>شاهد الرسم الذي ينفذه المضيف أو الرسام المختار</li>
                 <li>اكتب الإجابة الصحيحة في شات البث المباشر</li>
@@ -431,6 +518,77 @@ const YoutubeDrawingGame = () => {
             </div>
           </CardContent>
         </Card>
+
+        {/* لوحة الرسم للمتابع */}
+        {isDrawer && (
+          <Card>
+            <CardHeader>
+              <CardTitle>لوحة الرسم</CardTitle>
+              <CardDescription>ارسم الكلمة المطلوبة هنا وسيظهر رسمك للمشاهدين</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-wrap gap-2 mb-4">
+                <input 
+                  type="color" 
+                  value={color} 
+                  onChange={(e) => setColor(e.target.value)}
+                  className="w-10 h-10 cursor-pointer"
+                />
+                <input 
+                  type="range" 
+                  min="1" 
+                  max="20" 
+                  value={brushSize} 
+                  onChange={(e) => setBrushSize(parseInt(e.target.value))}
+                  className="w-24"
+                />
+                <span className="self-center text-gray-700 dark:text-gray-300">الحجم: {brushSize}</span>
+                <Button onClick={clearCanvas} variant="outline" size="sm">
+                  <RotateCcw className="ml-2 h-4 w-4" />
+                  مسح اللوحة
+                </Button>
+              </div>
+              
+              <div className="border rounded-lg bg-white dark:bg-gray-800 overflow-hidden">
+                <canvas
+                  ref={canvasRef}
+                  width={640}
+                  height={480}
+                  onMouseDown={startPainting}
+                  onMouseMove={paint}
+                  onMouseUp={stopPainting}
+                  onMouseLeave={stopPainting}
+                  className="w-full h-auto cursor-crosshair touch-none"
+                />
+              </div>
+              <div className="flex gap-2 mt-4">
+                <Button onClick={saveDrawing}>
+                  <Save className="ml-2 h-4 w-4" />
+                  حفظ الرسم
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* عرض الرسم للمشاهدين والمضيف */}
+        {!isDrawer && roomData.drawing_data && (
+          <Card>
+            <CardHeader>
+              <CardTitle>الرسم الحالي</CardTitle>
+              <CardDescription>شاهد ما يرسمه الرسام حالياً</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="border rounded-lg bg-white dark:bg-gray-800 overflow-hidden">
+                <img 
+                  src={roomData.drawing_data} 
+                  alt="الرسم الحالي" 
+                  className="w-full h-auto"
+                />
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* إدارة المضيف والرسام */}
         {(isHost || isDrawer) && (
@@ -449,10 +607,10 @@ const YoutubeDrawingGame = () => {
               </div>
               
               {roomData.current_word && (
-                <div className="bg-blue-50 p-3 rounded-lg">
-                  <p className="font-medium text-blue-800">الكلمة الحالية:</p>
+                <div className="bg-blue-50 dark:bg-blue-900/30 p-3 rounded-lg">
+                  <p className="font-medium text-blue-800 dark:text-blue-200">الكلمة الحالية:</p>
                   <div className="flex items-center justify-between mt-2">
-                    <p className="text-xl">{showWord ? roomData.current_word : '••••••'}</p>
+                    <p className="text-xl dark:text-white">{showWord ? roomData.current_word : '••••••'}</p>
                     <Button 
                       onClick={() => setShowWord(!showWord)} 
                       variant="outline" 
@@ -471,7 +629,7 @@ const YoutubeDrawingGame = () => {
                 className="w-full"
               >
                 <RefreshCw className={`ml-2 h-4 w-4 ${checking ? 'animate-spin' : ''}`} />
-                {checking ? 'جاري التحقق من التعليقات...' : 'تحقق من التعليقات الجديدة'}
+                {checking ? 'جاري التحقق من التعليقات...' : 'تحقق من التعليقات الآن'}
               </Button>
               
               <Button onClick={resetGame} variant="outline" className="w-full">
@@ -479,7 +637,7 @@ const YoutubeDrawingGame = () => {
               </Button>
               
               {roomData.last_checked && (
-                <p className="text-sm text-gray-500 text-center">
+                <p className="text-sm text-gray-500 dark:text-gray-400 text-center">
                   آخر تحقق: {new Date(roomData.last_checked).toLocaleString('ar-SA')}
                 </p>
               )}
@@ -497,7 +655,7 @@ const YoutubeDrawingGame = () => {
           </CardHeader>
           <CardContent>
             {roomData.winners.length === 0 ? (
-              <p className="text-center text-gray-500">لا يوجد فائزون حتى الآن</p>
+              <p className="text-center text-gray-500 dark:text-gray-400">لا يوجد فائزون حتى الآن</p>
             ) : (
               <div className="space-y-2">
                 {roomData.winners.map((winner, index) => (
@@ -505,8 +663,8 @@ const YoutubeDrawingGame = () => {
                     <div className="w-8 h-8 flex items-center justify-center bg-yellow-500 text-white rounded-full">
                       {index + 1}
                     </div>
-                    <span className="font-medium">{winner}</span>
-                    <span className="text-sm text-gray-500">(من شات البث)</span>
+                    <span className="font-medium dark:text-white">{winner}</span>
+                    <span className="text-sm text-gray-500 dark:text-gray-400">(من شات البث)</span>
                   </div>
                 ))}
               </div>
