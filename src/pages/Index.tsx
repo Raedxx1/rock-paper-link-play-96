@@ -90,7 +90,6 @@ function getYouTubeId(raw: string) {
 
 const Index = () => {
   const navigate = useNavigate();
-  const [roomLink, setRoomLink] = useState<string>(''); // (محتفظ فيه لو احتجته لاحقًا)
   const [youtubeUrl, setYoutubeUrl] = useState('');
   const [correctAnswers, setCorrectAnswers] = useState<string[]>(['']);
   const [showYoutubeForm, setShowYoutubeForm] = useState(false);
@@ -150,56 +149,79 @@ const Index = () => {
       let tableName = '';
       let gameData: any = {
         id: roomCode,
-        player1_name: "مضيف الغرفة",
-        game_status: 'waiting'
+        game_status: 'waiting',
+        created_at: new Date().toISOString()
       };
 
       if (gameType === 'rps') {
         tableName = 'game_rooms';
+        gameData.player1_name = "مضيف الغرفة";
       } else if (gameType === 'xo') {
         tableName = 'tic_tac_toe_rooms';
+        gameData.player1_name = "مضيف الغرفة";
         gameData.board = JSON.stringify(Array(9).fill(''));
         gameData.current_player = 'player1';
       } else if (gameType === 'snakes') {
         tableName = 'snakes_ladders_rooms';
+        gameData.player1_name = "مضيف الغرفة";
         gameData.board_state = JSON.stringify(Array(100).fill(0));
         gameData.current_player_index = 0;
         gameData.max_players = 4;
       } else if (gameType === 'youtube') {
         tableName = 'youtube_chat_rooms';
         const videoId = getYouTubeId(youtubeUrl);
-        gameData.youtube_url = youtubeUrl;
-        gameData.youtube_video_id = videoId; // نحفظ ID المستخرج
-        gameData.correct_answers = correctAnswers.filter(a => a.trim() !== '');
-        gameData.winners = [];
-      } else if (gameType === 'youtube-drawing') {
-        tableName = 'youtube_drawing_rooms';
-        const videoId = getYouTubeId(youtubeUrl);
+        gameData.player1_name = "مضيف الغرفة";
         gameData.youtube_url = youtubeUrl;
         gameData.youtube_video_id = videoId;
         gameData.correct_answers = correctAnswers.filter(a => a.trim() !== '');
         gameData.winners = [];
+        gameData.last_checked = new Date().toISOString();
+      } else if (gameType === 'youtube-drawing') {
+        tableName = 'youtube_drawing_rooms';
+        const videoId = getYouTubeId(youtubeUrl);
         gameData.host_name = "مضيف الغرفة";
+        gameData.youtube_url = youtubeUrl;
+        gameData.youtube_video_id = videoId;
+        gameData.correct_answers = correctAnswers.filter(a => a.trim() !== '');
+        gameData.winners = [];
         gameData.current_drawer = "مضيف الغرفة";
+        gameData.last_checked = new Date().toISOString();
       }
+
+      console.log('محاولة إدخال البيانات:', { tableName, gameData });
 
       const { error } = await supabase.from(tableName).insert(gameData);
       if (error) {
-        toast({ title: "❌ خطأ في إنشاء الغرفة", description: "حاول مرة أخرى", variant: "destructive" });
+        console.error('تفاصيل الخطأ:', error);
+        toast({ 
+          title: "❌ خطأ في إنشاء الغرفة", 
+          description: error.message,
+          variant: "destructive" 
+        });
         return;
       }
 
-      if (gameType === 'rps') navigate(`/play?r=${roomCode}&host=true`);
-      else if (gameType === 'xo') navigate(`/tic-tac-toe?r=${roomCode}&host=true`);
-      else if (gameType === 'snakes') navigate(`/snakes-ladders?r=${roomCode}&host=true`);
-      else if (gameType === 'youtube') navigate(`/youtube-chat?r=${roomCode}&host=true`);
-      else if (gameType === 'youtube-drawing') navigate(`/youtube-drawing?r=${roomCode}&host=true`);
-    } catch {
-      toast({ title: "❌ خطأ في الاتصال", description: "تأكد من اتصالك بالإنترنت", variant: "destructive" });
+      // التوجيه إلى الصفحات المناسبة
+      const routes: { [key: string]: string } = {
+        'rps': `/play?r=${roomCode}&host=true`,
+        'xo': `/tic-tac-toe?r=${roomCode}&host=true`,
+        'snakes': `/snakes-ladders?r=${roomCode}&host=true`,
+        'youtube': `/youtube-chat?r=${roomCode}&host=true`,
+        'youtube-drawing': `/youtube-drawing?r=${roomCode}&host=true`
+      };
+
+      navigate(routes[gameType]);
+    } catch (err: any) {
+      console.error('خطأ غير متوقع:', err);
+      toast({ 
+        title: "❌ خطأ في الاتصال", 
+        description: err.message || "تأكد من اتصالك بالإنترنت", 
+        variant: "destructive" 
+      });
     }
   };
 
-  // 🧩 بطاقة لعبة يوتيوب (نستخدمها مرتين: مكانها تحت معلومات اليوتيوب على الشاشات الواسعة، وفي عمود الألعاب على الشاشات الصغيرة)
+  // 🧩 بطاقة لعبة يوتيوب
   const YouTubeGameCard = () => (
     <Card className="bg-gradient-to-r from-red-900/80 to-pink-800/80 backdrop-blur-md border-red-400/30">
       <CardHeader className="text-center pb-3">
