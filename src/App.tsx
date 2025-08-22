@@ -4,6 +4,7 @@ import TicTacToeRoom from './pages/TicTacToeRoom';
 import Index from './pages/Index';
 import Home from './pages/Home'; // تأكد من استيراد Home
 import YoutubeChatGame from './pages/YoutubeChatGame';
+import YoutubeDrawingGame from './pages/YoutubeDrawingGame'; // الصفحة الجديدة للرسم
 
 function App() {
   return (
@@ -12,6 +13,7 @@ function App() {
       <Route path="/play" element={<GameRoom />} />
       <Route path="/tic-tac-toe" element={<TicTacToeRoom />} />
       <Route path="/youtube-chat" element={<YoutubeChatGame />} />
+      <Route path="/youtube-chat" element={<YoutubeDrawingGame />} />
     </Routes>
   );
 }
