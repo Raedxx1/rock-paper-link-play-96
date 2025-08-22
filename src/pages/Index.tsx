@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Plus, Gamepad2, Users, Crown, Sparkles, Zap, Star, Trash2, Youtube } from 'lucide-react';
+import { Plus, Gamepad2, Users, Crown, Sparkles, Zap, Star, Trash2, Youtube, Brush } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { ThemeToggle } from '@/components/ThemeToggle';
@@ -94,13 +94,15 @@ const Index = () => {
   const [youtubeUrl, setYoutubeUrl] = useState('');
   const [correctAnswers, setCorrectAnswers] = useState<string[]>(['']);
   const [showYoutubeForm, setShowYoutubeForm] = useState(false);
+  const [showDrawingForm, setShowDrawingForm] = useState(false);
 
   const generateRoomCode = (gameType: string) => {
     const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
     let result = gameType === 'rps' ? 'rps-' :
                  gameType === 'xo' ? 'xo-' :
                  gameType === 'snakes' ? 'snk-' :
-                 gameType === 'youtube' ? 'yt-' : '';
+                 gameType === 'youtube' ? 'yt-' :
+                 gameType === 'youtube-drawing' ? 'ytd-' : '';
     for (let i = 0; i < 5; i++) result += chars.charAt(Math.floor(Math.random() * chars.length));
     return result;
   };
@@ -119,7 +121,7 @@ const Index = () => {
   };
 
   const createNewGame = async (gameType: string) => {
-    if (gameType === 'youtube') {
+    if (gameType === 'youtube' || gameType === 'youtube-drawing') {
       if (!youtubeUrl) {
         toast({ title: "❌ يرجى إدخال رابط اليوتيوب", variant: "destructive" });
         return;
@@ -170,6 +172,15 @@ const Index = () => {
         gameData.youtube_video_id = videoId; // نحفظ ID المستخرج
         gameData.correct_answers = correctAnswers.filter(a => a.trim() !== '');
         gameData.winners = [];
+      } else if (gameType === 'youtube-drawing') {
+        tableName = 'youtube_drawing_rooms';
+        const videoId = getYouTubeId(youtubeUrl);
+        gameData.youtube_url = youtubeUrl;
+        gameData.youtube_video_id = videoId;
+        gameData.correct_answers = correctAnswers.filter(a => a.trim() !== '');
+        gameData.winners = [];
+        gameData.host_name = "مضيف الغرفة";
+        gameData.current_drawer = "مضيف الغرفة";
       }
 
       const { error } = await supabase.from(tableName).insert(gameData);
@@ -182,6 +193,7 @@ const Index = () => {
       else if (gameType === 'xo') navigate(`/tic-tac-toe?r=${roomCode}&host=true`);
       else if (gameType === 'snakes') navigate(`/snakes-ladders?r=${roomCode}&host=true`);
       else if (gameType === 'youtube') navigate(`/youtube-chat?r=${roomCode}&host=true`);
+      else if (gameType === 'youtube-drawing') navigate(`/youtube-drawing?r=${roomCode}&host=true`);
     } catch {
       toast({ title: "❌ خطأ في الاتصال", description: "تأكد من اتصالك بالإنترنت", variant: "destructive" });
     }
@@ -266,6 +278,96 @@ const Index = () => {
               <Button
                 variant="outline"
                 onClick={() => setShowYoutubeForm(false)}
+                className="bg-gray-800/50 border-gray-600 text-white hover:bg-gray-700"
+              >
+                إلغاء
+              </Button>
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+
+  // 🧩 بطاقة لعبة الرسم على يوتيوب
+  const YouTubeDrawingGameCard = () => (
+    <Card className="bg-gradient-to-r from-purple-900/80 to-pink-800/80 backdrop-blur-md border-purple-400/30">
+      <CardHeader className="text-center pb-3">
+        <div className="flex justify-center mb-2">
+          <div className="bg-purple-500/20 p-3 rounded-full">
+            <Brush className="h-6 w-6 text-purple-500" />
+          </div>
+        </div>
+        <CardTitle className="text-white">الرسم مع اليوتيوب</CardTitle>
+        <CardDescription className="text-purple-200/80">
+          ارسم وتفاعل مع متابعيك عبر اليوتيوب
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {!showDrawingForm ? (
+          <Button
+            onClick={() => setShowDrawingForm(true)}
+            className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white border-0 shadow-lg hover:shadow-purple-500/30 transition-all duration-300"
+          >
+            <Brush className="ml-2 h-5 w-5" />
+            إنشاء لعبة رسم
+          </Button>
+        ) : (
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="youtube-drawing-url" className="text-white">رابط البث المباشر لليوتيوب</Label>
+              <Input
+                id="youtube-drawing-url"
+                placeholder="https://www.youtube.com/live/XXXXXXXXXXX أو https://www.youtube.com/watch?v=XXXXXXXXXXX"
+                value={youtubeUrl}
+                onChange={(e) => setYoutubeUrl(e.target.value)}
+                className="bg-gray-800/50 border-gray-600 text-white"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-white">الإجابات الصحيحة (يمكن إضافة أكثر من إجابة)</Label>
+              {correctAnswers.map((answer, index) => (
+                <div key={index} className="flex gap-2">
+                  <Input
+                    value={answer}
+                    onChange={(e) => updateAnswer(index, e.target.value)}
+                    placeholder={`الإجابة الصحيحة ${index + 1}`}
+                    className="bg-gray-800/50 border-gray-600 text-white"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    onClick={() => removeAnswerField(index)}
+                    disabled={correctAnswers.length === 1}
+                    className="bg-red-700/50 border-red-500 text-white hover:bg-red-600"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              ))}
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full bg-gray-800/50 border-gray-600 text-white hover:bg-gray-700"
+                onClick={addAnswerField}
+              >
+                <Plus className="ml-2 h-4 w-4" />
+                إضافة إجابة
+              </Button>
+            </div>
+
+            <div className="flex gap-2">
+              <Button
+                onClick={() => createNewGame('youtube-drawing')}
+                className="flex-1 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
+              >
+                إنشاء اللعبة
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => setShowDrawingForm(false)}
                 className="bg-gray-800/50 border-gray-600 text-white hover:bg-gray-700"
               >
                 إلغاء
@@ -385,8 +487,9 @@ const Index = () => {
             </div>
 
             {/* ⬇️ يظهر فقط على الشاشات الواسعة: زر لعبة اليوتيوب تحت مستطيل المعلومات */}
-            <div className="hidden xl:block">
+            <div className="hidden xl:block space-y-6">
               <YouTubeGameCard />
+              <YouTubeDrawingGameCard />
             </div>
           </div>
 
@@ -459,8 +562,9 @@ const Index = () => {
             </Card>
 
             {/* يظهر كرت اليوتيوب هنا فقط على الشاشات الصغيرة/الطول */}
-            <div className="xl:hidden">
+            <div className="xl:hidden space-y-6">
               <YouTubeGameCard />
+              <YouTubeDrawingGameCard />
             </div>
           </div>
         </div>
