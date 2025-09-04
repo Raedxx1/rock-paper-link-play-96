@@ -580,10 +580,6 @@ const YouTubeDrawingGameCard = () => (
               </CardContent>
             </Card>
 
-            <div className="hidden xl:block">
-              <YouTubeDrawingGameCard />
-            </div>
-
             {/* إكس أو */}
             <Card className="bg-gradient-to-r from-green-900/80 to-emerald-800/80 backdrop-blur-md border-green-400/30">
               <CardHeader className="text-center pb-3">
@@ -627,7 +623,10 @@ const YouTubeDrawingGameCard = () => (
                 </Button>
               </CardContent>
             </Card>
-
+          <div className="hidden xl:block">
+              <YouTubeDrawingGameCard />
+            </div>
+            
             {/* يظهر كرت اليوتيوب هنا فقط على الشاشات الصغيرة/الطول */}
             <div className="xl:hidden space-y-6">
               <YouTubeGameCard />
