@@ -17,9 +17,9 @@ const gamingBg = 'https://raw.githubusercontent.com/Raedxx1/rock-paper-link-play
 // الصور
 const memes = [
   { id: 1, image: 'https://raw.githubusercontent.com/Raedxx1/rock-paper-link-play-96/refs/heads/main/src/assets/Memes1.jpg', name: 'ميمز 1' },
-  { id: 2, image: '极速28玩法https://raw.githubusercontent.com/Raedxx1/rock-paper-link-play-96/refs/heads/main/src/assets/Memes2.jpg', name: 'ميمز 2' },
+  { id: 2, image: 'https://raw.githubusercontent.com/Raedxx1/rock-paper-link-play-96/refs/heads/main/src/assets/Memes2.jpg', name: 'ميمز 2' },
   { id: 3, image: 'https://raw.githubusercontent.com/Raedxx1/rock-paper-link-play-96/refs/heads/main/src/assets/Memes3.jpg', name: 'ميمز 3' },
-  { id: 4, image: 'https://raw.githubusercontent.com/Raedxx极速28玩法1/rock-paper-link-play-96/refs/heads/main/src/assets/Memes4.jpg', name: 'ميمز 4' },
+  { id: 4, image: 'https://raw.githubusercontent.com/Raedxx1/rock-paper-link-play-96/refs/heads/main/src/assets/Memes4.jpg', name: 'ميمز 4' },
   { id: 5, image: 'https://raw.githubusercontent.com/Raedxx1/rock-paper-link-play-96/refs/heads/main/src/assets/Memes5.jpg', name: 'ميمز 5' },
   { id: 6, image: 'https://raw.githubusercontent.com/Raedxx1/rock-paper-link-play-96/refs/heads/main/src/assets/Memes6.jpg', name: 'ميمز 6' },
   { id: 7, image: 'https://raw.githubusercontent.com/Raedxx1/rock-paper-link-play-96/refs/heads/main/src/assets/Memes7.jpg', name: 'ميمز 7' },
