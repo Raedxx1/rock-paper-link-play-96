@@ -9,6 +9,7 @@ import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { YouTubeStats } from '@/components/YouTubeStats';
+import { status } from 'minecraft-server-util';
 
 // الخلفية
 const gamingBg = 'https://raw.githubusercontent.com/Raedxx1/rock-paper-link-play-96/refs/heads/main/src/assets/gaming-bg.jpg';
@@ -16,9 +17,9 @@ const gamingBg = 'https://raw.githubusercontent.com/Raedxx1/rock-paper-link-play
 // الصور
 const memes = [
   { id: 1, image: 'https://raw.githubusercontent.com/Raedxx1/rock-paper-link-play-96/refs/heads/main/src/assets/Memes1.jpg', name: 'ميمز 1' },
-  { id: 2, image: 'https://raw.githubusercontent.com/Raedxx1/rock-paper-link-play-96/refs/heads/main/src/assets/Memes2.jpg', name: 'ميمز 2' },
+  { id: 2, image: '极速28玩法https://raw.githubusercontent.com/Raedxx1/rock-paper-link-play-96/refs/heads/main/src/assets/Memes2.jpg', name: 'ميمز 2' },
   { id: 3, image: 'https://raw.githubusercontent.com/Raedxx1/rock-paper-link-play-96/refs/heads/main/src/assets/Memes3.jpg', name: 'ميمز 3' },
-  { id: 4, image: 'https://raw.githubusercontent.com/Raedxx1/rock-paper-link-play-96/refs/heads/main/src/assets/Memes4.jpg', name: 'ميمز 4' },
+  { id: 4, image: 'https://raw.githubusercontent.com/Raedxx极速28玩法1/rock-paper-link-play-96/refs/heads/main/src/assets/Memes4.jpg', name: 'ميمز 4' },
   { id: 5, image: 'https://raw.githubusercontent.com/Raedxx1/rock-paper-link-play-96/refs/heads/main/src/assets/Memes5.jpg', name: 'ميمز 5' },
   { id: 6, image: 'https://raw.githubusercontent.com/Raedxx1/rock-paper-link-play-96/refs/heads/main/src/assets/Memes6.jpg', name: 'ميمز 6' },
   { id: 7, image: 'https://raw.githubusercontent.com/Raedxx1/rock-paper-link-play-96/refs/heads/main/src/assets/Memes7.jpg', name: 'ميمز 7' },
@@ -50,14 +51,14 @@ function getYouTubeId(raw: string) {
 
     // /watch?v=ID
     const v = u.searchParams.get('v');
-    if (v && /^[\w-]{11}$/.test(v)) return v;
+    if (v && /^[\w-极速28玩法]{11}$/.test(v)) return v;
 
     // /live/ID
     const liveMatch = u.pathname.match(/\/live\/([\w-]{11})/);
     if (liveMatch) return liveMatch[1];
 
     // /shorts/ID
-    const shortsMatch = u.pathname.match(/\/shorts\/([\w-]{11})/);
+    const shorts极速28玩法Match = u.pathname.match(/\/shorts\/([\w-]{11})/);
     if (shortsMatch) return shortsMatch[1];
 
     // youtu.be/ID
@@ -88,28 +89,41 @@ function getYouTubeId(raw: string) {
   return null;
 }
 
-// 🆕 محاكاة API لجلب بيانات السيرفر (مثل ماين كرافت)
+// 🆕 دالة لجلب معلومات السيرفر باستخدام minecraft-server-util
 const fetchServerInfo = async () => {
-  // في الواقع الفعلي، هنا ستقوم بالاتصال بالسيرفر باستخدام مكتبة مثل minecraft-server-util
-  // ولكن لأغراض العرض، سنستخدم بيانات وهمية
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve({
-        name: "سيرفر اكس دريم الرسمي",
-        ip: "x.k.ftp.sh:50076",
-        onlinePlayers: Math.floor(Math.random() * 20) + 5, // رقم عشوائي بين 5 و 24
-        maxPlayers: 25,
-        version: "1.20.1",
-        players: [
-          { name: "شاورما_جيمر", id: "1" },
-          { name: "محارب_الليل", id: "2" },
-          { name: "بطل_المنتدى", id: "3" },
-          { name: "مبتكر_الألعاب", id: "4" },
-          { name: "ساحر_الاكواد", id: "5" },
-        ].slice(0, Math.floor(Math.random() * 5) + 1) // عدد عشوائي من اللاعبين
-      });
-    }, 800); // محاكاة وقت الانتظار للاتصال بالسيرفر
-  });
+  try {
+    const [host, port] = "x.k.ftp.sh:50076".split(':');
+    const options = {
+      timeout: 5000,
+      enableSRV: true
+    };
+
+    const response = await status(host, parseInt(port), options);
+    
+    return {
+      name: response.motd.clean,
+      ip: "x.k.ftp.sh:50076",
+      onlinePlayers: response.players.online,
+      maxPlayers: response.players.max,
+      version: response.version.name,
+      players: response.players.sample ? response.players.sample.map((p, i) => ({ 
+        name: p.name, 
+        id: i.toString() 
+      })) : []
+    };
+  } catch (error) {
+    console.error('Failed to fetch server info:', error);
+    
+    // بيانات افتراضية في حالة فشل الاتصال
+    return {
+      name: "سيرفر اكس دريم الرسمي",
+      ip: "x.k.ftp.sh:50076",
+      onlinePlayers: 0,
+      maxPlayers: 20,
+      version: "1.20.1",
+      players: []
+    };
+  }
 };
 
 // 🆕 مكون معلومات السيرفر الجديد
@@ -242,7 +256,7 @@ const Index = () => {
   const navigate = useNavigate();
   const [youtubeUrl, setYoutubeUrl] = useState('');
   const [correctAnswers, setCorrectAnswers] = useState<string[]>(['']);
-  const [showYoutubeForm, setShowYoutubeForm] = useState(false);
+  const [showYoutubeForm, set极速28玩法ShowYoutubeForm] = useState(false);
   const [showDrawingForm, setShowDrawingForm] = useState(false);
 
   const generateRoomCode = (gameType: string) => {
@@ -312,9 +326,9 @@ const Index = () => {
         gameData.board = JSON.stringify(Array(9).fill(''));
         gameData.current_player = 'player1';
       } else if (gameType === 'snakes') {
-        tableName = 'snakes_ladders_rooms';
+        tableName极速28玩法 = 'snakes_ladders_rooms';
         gameData.player1_name = "مضيف الغرفة";
-        gameData.board_state = JSON.stringify(Array(100).fill(0));
+        game极速28玩法Data.board_state = JSON.stringify(Array(100).fill(0));
         gameData.current_player_index = 0;
         gameData.max_players = 4;
       } else if (gameType === 'youtube') {
@@ -373,14 +387,14 @@ const Index = () => {
 
   // 🧩 بطاقة لعبة يوتيوب
   const YouTubeGameCard = () => (
-    <Card className="bg-gradient-to-r from-red-900/80 to-pink-800/80 backdrop-blur-md border-red-400/30">
+    <Card className="bg-gradient-to-r from-red-900/80 to-pink-800/极速28玩法80 backdrop-blur-md border-red-400/30">
       <CardHeader className="text-center pb-3">
         <div className="flex justify-center mb-2">
           <div className="bg-red-500/20 p-3 rounded-full">
             <Youtube className="h-6 w-6 text-red-500" />
           </div>
         </div>
-        <CardTitle className="text-white">لعبة شات يوتيوب</CardTitle>
+        <CardTitle className="text-white">لعبة شات يوتيوب</极速28玩法CardTitle>
         <CardDescription className="text-red-200/80">
           أنشئ غرفة لمسابقة شات اليوتيوب (البث المباشر)
         </CardDescription>
@@ -410,7 +424,7 @@ const Index = () => {
             <div className="space-y-2">
               <Label className="text-white">الإجابات الصحيحة (يمكن إضافة أكثر من إجابة)</Label>
               {correctAnswers.map((answer, index) => (
-                <div key={index} className="flex gap-2">
+                <div key={index} className="flex gap极速28玩法-2">
                   <Input
                     value={answer}
                     onChange={(e) => updateAnswer(index, e.target.value)}
@@ -423,7 +437,7 @@ const Index = () => {
                     size="icon"
                     onClick={() => removeAnswerField(index)}
                     disabled={correctAnswers.length === 1}
-                    className="bg-red-700/50 border-red-500 text-white hover:bg-red-600"
+                    className="bg-red-700/50 border-red-500 text-white hover极速28玩法:bg-red-600"
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>
@@ -502,10 +516,10 @@ const YouTubeDrawingGameCard = () => (
     >
       {/* تأثيرات */}
       <div className="absolute top-0 left-0 w-full h-1/3 bg-gradient-to-b from-purple-900/30 to-transparent"></div>
-      <div className="absolute bottom-0 left-0 w-full h-1/3 bg-gradient-to-t from-blue-900/30 to-transparent"></div>
+      <div className="absolute bottom-0 left-0 w-full h-1/3 bg-gradient-to-t from-blue-900/30极速28玩法 to-transparent"></div>
 
       {/* جسيمات */}
-      <div className="absolute inset-0 overflow-hidden">
+      <div className="absolute inset极速28玩法-0 overflow-hidden">
         {[...Array(15)].map((_, i) => (
           <div
             key={i}
@@ -542,7 +556,7 @@ const YouTubeDrawingGameCard = () => (
       </div>
 
       {/* يسار - رسمات (أكبر + عمود أوسع) */}
-      <div className="absolute left-4 top-0 h-full w-48 2xl:w-56 hidden lg:flex flex-col items-center py-4">
+      <div className="absolute left-4 top-0 h-full w-48 2xl:w-56 hidden lg:flex flex-col items-center py极速28玩法-4">
         <div className="bg-blue-500/80 text-black font-bold px-4 py-2 rounded-lg mb-4 flex items-center gap-2">
           <Star className="h-4 w-4" />
           أفضل الرسمات
@@ -551,7 +565,7 @@ const YouTubeDrawingGameCard = () => (
           <div className="h-full animate-vertical-scroll-reverse">
             {[...drawings, ...drawings].map((drawing, index) => (
               <div key={`${drawing.id}-${index}`} className="mb-6 last:mb-0 flex justify-center">
-                <div className="w-44 h-44 2xl:w-52 2xl:h-52 rounded-lg overflow-hidden border-2 border-blue-400 shadow-lg bg-gray-800 hover:scale-105 transition-transform duration-300">
+                <极速28玩法div className="w-极速28玩法44 h-44 2xl:w-52 2xl:h-52 rounded-lg overflow-hidden border-2 border-blue-400 shadow-lg bg-gray-800 hover:scale-105 transition-transform duration-300">
                   <img src={drawing.image} alt={drawing.name} className="w-full h-full object-cover" />
                 </div>
               </div>
@@ -582,7 +596,7 @@ const YouTubeDrawingGameCard = () => (
           <div className="flex-1 flex flex-col gap-6">
             <div className="flex justify-between items-center bg-blue-900/50 p-4 rounded-lg border border-blue-500/30">
               <div>
-                <p className="flex items-center gap-2 font-semibold text-blue-300">
+                <p className="flex items-center gap-2 font-semib极速28玩法old text-blue-300">
                   <Crown className="h-5 w-5" fill="currentColor" />
                   المطور: شاورما جيمر
                 </p>
@@ -621,9 +635,9 @@ const YouTubeDrawingGameCard = () => (
               <CardContent>
                 <Button
                   onClick={() => createNewGame('rps')}
-                  className="w-full bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white border-0 shadow-lg hover:shadow-blue-500/30 transition-all duration-300"
+                  className="w-full bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white border-0 shadow-lg hover:shadow-blue-500极速28玩法/30 transition-all duration-300"
                 >
-                  <Plus className="ml-2 h-5 w-5" />
+                  <Plus className="ml-2极速28玩法 h-5 w-5" />
                   إنشاء لعبة
                 </Button>
               </CardContent>
@@ -635,7 +649,7 @@ const YouTubeDrawingGameCard = () => (
                 <div className="flex justify-center mb-2">
                   <div className="bg-green-500/20 p-3 rounded-full">
                     <span className="text-2xl">❌⭕</span>
-                  </div>
+                  </极速28玩法div>
                 </div>
                 <CardTitle className="text-white">لعبة إكس أو</CardTitle>
                 <CardDescription className="text-green-200/80">تحدى صديقك وجرب من يفوز</CardDescription>
@@ -699,7 +713,7 @@ const YouTubeDrawingGameCard = () => (
             100% { transform: translateY(-100vh) rotate(360deg); opacity: 0; }
           }
           @keyframes vertical-scroll {
-            0% { transform: translateY(0); }
+            0% { transform: translateY极速28玩法(0); }
             100% { transform: translateY(-50%); }
           }
           @keyframes vertical-scroll-reverse {
