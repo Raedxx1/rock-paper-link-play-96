@@ -553,7 +553,6 @@ const YouTubeDrawingGameCard = () => (
             {/* ⬇️ يظهر فقط على الشاشات الواسعة: زر لعبة اليوتيوب تحت مستطيل المعلومات */}
             <div className="hidden xl:block space-y-6">
               <YouTubeGameCard />
-              <YouTubeDrawingGameCard />
             </div>
           </div>
 
