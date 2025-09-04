@@ -1,10 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Plus, Gamepad2, Users, Crown, Sparkles, Zap, Star, Trash2, Youtube, Brush } from 'lucide-react';
+import { Plus, Gamepad2, Users, Crown, Sparkles, Zap, Star, Trash2, Youtube, Brush, Copy, User, Server, RefreshCw } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { ThemeToggle } from '@/components/ThemeToggle';
@@ -87,6 +87,156 @@ function getYouTubeId(raw: string) {
 
   return null;
 }
+
+// 🆕 محاكاة API لجلب بيانات السيرفر (مثل ماين كرافت)
+const fetchServerInfo = async () => {
+  // في الواقع الفعلي، هنا ستقوم بالاتصال بالسيرفر باستخدام مكتبة مثل minecraft-server-util
+  // ولكن لأغراض العرض، سنستخدم بيانات وهمية
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      resolve({
+        name: "سيرفر اكس دريم الرسمي",
+        ip: "x.k.ftp.sh:50076",
+        onlinePlayers: Math.floor(Math.random() * 20) + 5, // رقم عشوائي بين 5 و 24
+        maxPlayers: 25,
+        version: "1.20.1",
+        players: [
+          { name: "شاورما_جيمر", id: "1" },
+          { name: "محارب_الليل", id: "2" },
+          { name: "بطل_المنتدى", id: "3" },
+          { name: "مبتكر_الألعاب", id: "4" },
+          { name: "ساحر_الاكواد", id: "5" },
+        ].slice(0, Math.floor(Math.random() * 5) + 1) // عدد عشوائي من اللاعبين
+      });
+    }, 800); // محاكاة وقت الانتظار للاتصال بالسيرفر
+  });
+};
+
+// 🆕 مكون معلومات السيرفر الجديد
+const ServerInfo = () => {
+  const [serverData, setServerData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [showPlayers, setShowPlayers] = useState(false);
+
+  const loadServerInfo = async () => {
+    setLoading(true);
+    try {
+      const data = await fetchServerInfo();
+      setServerData(data);
+    } catch (error) {
+      toast({
+        title: "خطأ في الاتصال",
+        description: "تعذر جلب بيانات السيرفر",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadServerInfo();
+  }, []);
+
+  const copyServerIp = () => {
+    if (!serverData) return;
+    
+    navigator.clipboard.writeText(serverData.ip)
+      .then(() => {
+        toast({
+          title: "تم النسخ!",
+          description: "تم نسخ IP السيرفر بنجاح",
+        });
+      })
+      .catch(err => {
+        console.error('Failed to copy: ', err);
+        toast({
+          title: "خطأ في النسخ",
+          description: "تعذر نسخ IP السيرفر",
+          variant: "destructive"
+        });
+      });
+  };
+
+  if (loading) {
+    return (
+      <Card className="bg-gradient-to-r from-blue-900/80 to-cyan-800/80 backdrop-blur-md border-blue-400/30">
+        <CardContent className="p-6 flex justify-center items-center">
+          <RefreshCw className="h-6 w-6 animate-spin text-blue-400" />
+          <span className="mr-2 text-white">جاري تحميل بيانات السيرفر...</span>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card className="bg-gradient-to-r from-blue-900/80 to-cyan-800/80 backdrop-blur-md border-blue-400/30">
+      <CardHeader className="text-center pb-3">
+        <div className="flex justify-center mb-2">
+          <div className="bg-blue-500/20 p-3 rounded-full">
+            <Server className="h-6 w-6 text-blue-500" />
+          </div>
+        </div>
+        <CardTitle className="text-white">{serverData.name}</CardTitle>
+        <CardDescription className="text-blue-200/80">
+          الإصدار: {serverData.version}
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="flex justify-between items-center bg-blue-800/40 p-2 rounded-md">
+          <span className="text-white text-sm">اللاعبون المتصلون:</span>
+          <span className="text-white font-bold">{serverData.onlinePlayers} / {serverData.maxPlayers}</span>
+        </div>
+        
+        <div className="flex gap-2">
+          <Button
+            onClick={() => setShowPlayers(!showPlayers)}
+            className="flex-1 bg-blue-700 hover:bg-blue-600 text-white border-0"
+            size="sm"
+          >
+            <User className="ml-2 h-4 w-4" />
+            {showPlayers ? 'إخفاء اللاعبين' : 'عرض اللاعبين'}
+          </Button>
+          <Button
+            onClick={copyServerIp}
+            className="flex-1 bg-cyan-700 hover:bg-cyan-600 text-white border-0"
+            size="sm"
+          >
+            <Copy className="ml-2 h-4 w-4" />
+            نسخ IP
+          </Button>
+          <Button
+            onClick={loadServerInfo}
+            className="bg-green-700 hover:bg-green-600 text-white border-0"
+            size="sm"
+          >
+            <RefreshCw className="h-4 w-4" />
+          </Button>
+        </div>
+        
+        {showPlayers && serverData.players.length > 0 && (
+          <div className="bg-blue-800/30 p-3 rounded-md">
+            <h4 className="text-white text-sm font-medium mb-2">اللاعبون المتصلون:</h4>
+            <ul className="text-white/80 text-sm space-y-1">
+              {serverData.players.map(player => (
+                <li key={player.id} className="flex items-center">
+                  <User className="h-3 w-3 ml-2" />
+                  {player.name}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {showPlayers && serverData.players.length === 0 && (
+          <div className="bg-blue-800/30 p-3 rounded-md text-center">
+            <p className="text-white/80 text-sm">لا يوجد لاعبون متصلون حالياً</p>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+};
 
 const Index = () => {
   const navigate = useNavigate();
@@ -444,6 +594,9 @@ const YouTubeDrawingGameCard = () => (
             <div className="bg-gradient-to-r from-purple-900/50 to-pink-900/50 p-4 rounded-lg border border-purple-400/30">
               <YouTubeStats />
             </div>
+
+            {/* 🆕 إضافة مكون معلومات السيرفر هنا */}
+            <ServerInfo />
 
             {/* ⬇️ يظهر فقط على الشاشات الواسعة: زر لعبة اليوتيوب تحت مستطيل المعلومات */}
             <div className="hidden xl:block space-y-6">
