@@ -36,85 +36,37 @@ const drawings = [
   { id: 8, image: 'https://raw.githubusercontent.com/Raedxx1/rock-paper-link-play-96/refs/heads/main/src/assets/drawing8.jpg', name: 'رسمة 8' },
 ];
 
-// 🔧 دالة قوية لاستخراج معرف الفيديو من كل صيغ يوتيوب (تدعم /live مع باراميترات مثل si=)
-function getYouTubeId(raw: string) {
-  if (!raw) return null;
-  const url = raw.trim();
-
-  // إذا المستخدم أدخل الـ ID مباشرة
-  if (/^[\w-]{11}$/.test(url)) return url;
-
-  // جرّب تحليل كـ URL إن أمكن
-  try {
-    const u = new URL(url);
-
-    // /watch?v=ID
-    const v = u.searchParams.get('v');
-    if (v && /^[\w-]{11}$/.test(v)) return v;
-
-    // /live/ID
-    const liveMatch = u.pathname.match(/\/live\/([\w-]{11})/);
-    if (liveMatch) return liveMatch[1];
-
-    // /shorts/ID
-    const shortsMatch = u.pathname.match(/\/shorts\/([\w-]{11})/);
-    if (shortsMatch) return shortsMatch[1];
-
-    // youtu.be/ID
-    const yb = u.hostname.includes('youtu.be') ? u.pathname.slice(1) : '';
-    if (/^[\w-]{11}$/.test(yb)) return yb;
-
-    // /embed/ID أو /v/ID
-    const pathMatch = u.pathname.match(/\/(?:embed|v)\/([\w-]{11})/);
-    if (pathMatch) return pathMatch[1];
-  } catch {
-    // لو ماكان URL صحيح نكمل بأنماط regex العامة
-  }
-
-  // أنماط عامة كـ fallback (تشمل أي ترتيب)
-  const patterns = [
-    /youtu\.be\/([\w-]{11})/,
-    /youtube\.com\/watch\?[^#?]*v=([\w-]{11})/,
-    /youtube\.com\/live\/([\w-]{11})/,
-    /youtube\.com\/shorts\/([\w-]{11})/,
-    /youtube\.com\/embed\/([\w-]{11})/,
-    /youtube\.com\/v\/([\w-]{11})/,
-  ];
-  for (const p of patterns) {
-    const m = url.match(p);
-    if (m?.[1]) return m[1];
-  }
-
-  return null;
-}
-
-// 🆕 محاكاة API لجلب بيانات السيرفر (مثل ماين كرافت)
+// 🆕 دالة حقيقية لجلب بيانات السيرفر من API mcsrvstat.us
 const fetchServerInfo = async () => {
-  // في الواقع الفعلي، هنا ستقوم بالاتصال بالسيرفر باستخدام مكتبة مثل minecraft-server-util
-  // ولكن لأغراض العرض، سنستخدم بيانات وهمية
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve({
-        name: "سيرفر اكس دريم الرسمي",
-        ip: "x.k.ftp.sh:50076",
-        onlinePlayers: Math.floor(Math.random() * 20) + 5, // رقم عشوائي بين 5 و 24
-        maxPlayers: 25,
-        version: "1.20.1",
-        players: [
-          { name: "شاورما_جيمر", id: "1" },
-          { name: "محارب_الليل", id: "2" },
-          { name: "بطل_المنتدى", id: "3" },
-          { name: "مبتكر_الألعاب", id: "4" },
-          { name: "ساحر_الاكواد", id: "5" },
-        ].slice(0, Math.floor(Math.random() * 5) + 1) // عدد عشوائي من اللاعبين
-      });
-    }, 800); // محاكاة وقت الانتظار للاتصال بالسيرفر
-  });
+  const ip = "x.k.ftp.sh";   // غير IP هنا لو عندك سيرفر ثاني
+  const port = 50076;
+
+  try {
+    const response = await fetch(`https://api.mcsrvstat.us/2/${ip}:${port}`);
+    if (!response.ok) throw new Error("فشل الاتصال بالـ API");
+
+    const data = await response.json();
+
+    return {
+      name: data.motd?.clean?.[0] || "Minecraft Server",
+      ip: `${ip}:${port}`,
+      onlinePlayers: data.players?.online || 0,
+      maxPlayers: data.players?.max || 0,
+      version: data.version || "غير معروف",
+      players: (data.players?.list || []).map((name: string, i: number) => ({
+        name,
+        id: i.toString(),
+      })),
+    };
+  } catch (err) {
+    console.error("❌ خطأ أثناء جلب بيانات السيرفر:", err);
+    throw err;
+  }
 };
 
 // 🆕 مكون معلومات السيرفر الجديد
 const ServerInfo = () => {
-  const [serverData, setServerData] = useState(null);
+  const [serverData, setServerData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [showPlayers, setShowPlayers] = useState(false);
 
@@ -140,7 +92,6 @@ const ServerInfo = () => {
 
   const copyServerIp = () => {
     if (!serverData) return;
-    
     navigator.clipboard.writeText(serverData.ip)
       .then(() => {
         toast({
@@ -218,7 +169,7 @@ const ServerInfo = () => {
           <div className="bg-blue-800/30 p-3 rounded-md">
             <h4 className="text-white text-sm font-medium mb-2">اللاعبون المتصلون:</h4>
             <ul className="text-white/80 text-sm space-y-1">
-              {serverData.players.map(player => (
+              {serverData.players.map((player: any) => (
                 <li key={player.id} className="flex items-center">
                   <User className="h-3 w-3 ml-2" />
                   {player.name}
@@ -237,6 +188,7 @@ const ServerInfo = () => {
     </Card>
   );
 };
+
 
 const Index = () => {
   const navigate = useNavigate();
